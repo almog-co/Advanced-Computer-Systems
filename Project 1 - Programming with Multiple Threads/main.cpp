@@ -1,7 +1,8 @@
 #include <iostream>
 #include <thread>
 #include <fstream>
-#include <zstd.h>
+#include <vector>
+#include "zstd.h"
 
 using namespace std;
 
@@ -20,6 +21,33 @@ using namespace std;
 //         string data;   
 // };
 
+// global variables for I/O files
+ifstream inputFile;
+fstream outputFile("output.zst", ios::binary);
+
+// 16KB block size
+const int BLOCK_SIZE = 16 * 1024;
+
+// function for reading input data
+void readData() {
+    char buffer[BLOCK_SIZE]; // 16 KB buffer
+    while (inputFile.read(buffer, BLOCK_SIZE)) {
+        // read input file
+    }
+}
+
+// function for compressing input data
+void compressData(char* buffer) {
+    // compress using ZSTD
+    // send compressed data to main
+}
+
+
+void writeData(char* compressed_data) {
+    // write the compressed data to output file
+}
+
+
 int main(int argc, char* argv[]) {
     cout << ZSTD_versionNumber() << endl;
 
@@ -29,8 +57,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    ifstream inputFile(argv[1], ios::binary);
-    fstream outputFile("output.zst", ios::binary);
     
     // Verify file can be opened
     if (!inputFile.is_open()) {
@@ -49,6 +75,7 @@ int main(int argc, char* argv[]) {
     char inputBuffer[chunkSize];
     char outputBuffer[chunkSize];
 
+    // possibly move this loop to readData function
     while (inputFile) {
         inputFile.read(inputBuffer, chunkSize);
 
@@ -85,6 +112,22 @@ int main(int argc, char* argv[]) {
         ZSTD_freeCCtx(zstdContext);
 
         outputFile << outputBuffer;
+    }
+
+    // create worker threads
+    std::thread reader_thread(readData);
+    std::vector<std::thread> worker_threads;
+    int num_threads = 5;
+
+    for (int i = 0; i < num_threads; i++) {
+        std::thread t(compressData);
+        worker_threads.push_back(t);
+    }
+
+    // join threads
+    reader_thread.join();
+    for (int i = 0; i < worker_threads.size(); i++) {
+        worker_threads[i].join();
     }
 
     // Close the files
