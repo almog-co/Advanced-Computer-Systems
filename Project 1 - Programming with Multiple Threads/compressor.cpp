@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 
-
+// working
 void compress_data(char* input_buffer, char* output_buffer, size_t& compressedSize, bool &done) {
     // compression is not complete
     done = false;
@@ -10,12 +10,12 @@ void compress_data(char* input_buffer, char* output_buffer, size_t& compressedSi
     size_t input_size = 16384; // 16KB
     size_t output_size = ZSTD_compressBound(input_size);
 
-    compressedSize = output_size;
+    //compressedSize = output_size;
 
     // compression here
-    int compression_result = ZSTD_compress(output_buffer, output_size, input_buffer, input_size, 1);
+    compressedSize = ZSTD_compress(output_buffer, output_size, input_buffer, input_size, 1);
 
-    if (compression_result > 0) {
+    if (compressedSize > 0) {
         // compression successful
         done = true;
     } else {
@@ -52,7 +52,12 @@ int main() {
 
     // fill the input buffer with random data
     for (int i = 0; i < 16384; i++) {
-        inBuffer[i] = 'a';
+        if (i%2 == 0) {
+            inBuffer[i] = 'a';
+        } else {
+            inBuffer[i] = 'b';
+        }
+        
     }
     
     // set the done flag to false
