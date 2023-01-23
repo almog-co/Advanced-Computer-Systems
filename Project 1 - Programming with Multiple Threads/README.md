@@ -12,7 +12,8 @@ This program is designed to take in a file and compress it using the Zstandard l
 
 The program uses a WorkerThread class to manage the worker threads. The class has methods for launching, joining and checking if the thread has completed execution.
 
-The program uses the compressBufferData function to compress the input buffer and test function to check if the thread launches successfully.
+The program uses the compressBufferData function to compress the input buffer, puts the compressed data into the WorkerThread's output buffer, and provides the compressedSize for that data.
+
 The compressed data is stored in an array of output buffers, parallel to an array of compressed data sizes.
 
 ## Usage
