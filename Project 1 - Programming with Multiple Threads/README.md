@@ -19,10 +19,10 @@ The compressed data is stored in an array of output buffers, parallel to an arra
 The program takes a single command-line argument, the name of the input file. The input file must be in binary mode.
 
 The program is designed to be compiled and executed using the following command:
-'''
+```
 g++ -o compress compress.cpp -lzstd
 ./compress <input file>
-'''
+```
 
 The output will be written to a file named "compressed_data.zst" in the current working directory.
 
