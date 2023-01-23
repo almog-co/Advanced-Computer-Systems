@@ -3,12 +3,14 @@
 #include <iostream>
 
 
-void compress_data(char* input_buffer, char* output_buffer, bool &done) {
+void compress_data(char* input_buffer, char* output_buffer, size_t& compressedSize, bool &done) {
     // compression is not complete
     done = false;
 
     size_t input_size = 16384; // 16KB
     size_t output_size = ZSTD_compressBound(input_size);
+
+    compressedSize = output_size;
 
     // compression here
     int compression_result = ZSTD_compress(output_buffer, output_size, input_buffer, input_size, 1);
@@ -22,16 +24,19 @@ void compress_data(char* input_buffer, char* output_buffer, bool &done) {
     }
 }
 
-void compressBufferData(char* inBuffer, char* outBuffer, bool* done) {
+void compressBufferData(char* inBuffer, char* outBuffer, size_t& compressedSize, bool* done) {
     // compression is not complete
     *done = false;
 
     // create a ZSTD compressor object
     ZSTD_CCtx* cctx = ZSTD_createCCtx();
+
+    // size of output buffer
+    compressedSize = ZSTD_compressBound(16384);
     
     // get the size of the compressed data
-    size_t compressedSize = ZSTD_compressCCtx(cctx, outBuffer, 16384, inBuffer, 16384, 0);
-    
+    size_t comp = ZSTD_compressCCtx(cctx, outBuffer, compressedSize, inBuffer, 16384, 0);
+
     // free the compressor object
     ZSTD_freeCCtx(cctx);
     
@@ -47,14 +52,19 @@ int main() {
 
     // fill the input buffer with random data
     for (int i = 0; i < 16384; i++) {
-        inBuffer[i] = rand() % 256;
+        inBuffer[i] = 'a';
     }
     
     // set the done flag to false
     bool done = false;
+
+    size_t compressedSize;
     
     // compress the input buffer data
-    compress_data(inBuffer, outBuffer, &done);
+    compress_data(inBuffer, outBuffer, compressedSize, done);
+
+    std::cout << "INPUT BUFFER SIZE: " << std::endl;
+    std::cout << "16384" << std::endl;
     
     // check if the compression is done
     if (done) {
@@ -62,6 +72,10 @@ int main() {
     } else {
         std::cout << "Compression failed!" << std::endl;
     }
+
+    std::cout << "OUTPUT BUFFER SIZE: " << std::endl;
+
+    std::cout << compressedSize << std::endl;
     
     // free the buffers
     free(inBuffer);
