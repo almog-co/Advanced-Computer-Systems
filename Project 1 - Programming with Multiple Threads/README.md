@@ -20,7 +20,7 @@ The program takes a single command-line argument, the name of the input file. Th
 
 The program is designed to be compiled and executed using the following command:
 ```
-g++ -o compress compress.cpp -lzstd
+g++ -o compress compress.cpp -L/usr/local/lib/ -lzstd
 ./compress <input file>
 ```
 
