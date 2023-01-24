@@ -21,8 +21,8 @@ The program takes a single command-line argument, the name of the input file. Th
 
 The program is designed to be compiled and executed using the following command:
 ```
-g++ -o compress compress.cpp -L/usr/local/lib/ -lzstd
-./compress <input file>
+g++ -std=c++11 -o compress.out -L/usr/local/lib/ -lzstd compress.cpp
+./compress.out <input file>
 ```
 
 The output will be written to a file named "compressed_data.zst" in the current working directory.
