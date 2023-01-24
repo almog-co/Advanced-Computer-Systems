@@ -18,6 +18,7 @@
 #include <thread>
 #include <vector>
 #include <stdlib.h>
+#include <zstd.h>
 
 using namespace std;
 
@@ -32,8 +33,8 @@ using namespace std;
 // Function Declarations
 // =================================
 
-void compressBufferData(char* inBuffer, char* outBuffer, bool* done);
-void test(int16_t thread_id) {
+void compressBufferData(char* input_buffer, char* output_buffer, size_t& compressedSize);
+void test(int16_t thread_id, char** outBuffer) {
     cout << "Hello World from " << thread_id << endl;
 }
 
@@ -47,23 +48,25 @@ class WorkerThread {
         WorkerThread() {
             this->p_thread_id = -1;
             this->p_launched = false;
-            this->p_output_buffer = NULL;
+            this->p_output_buffer = nullptr;
+            this->compressedSize = 0;
         }
     
         WorkerThread(const int16_t thread_id) {
             this->p_thread_id = thread_id;
             this->p_launched = false;
             this->p_output_buffer = new char[CHUNK_SIZE];
+            this->compressedSize = 0;
         }
 
         void launch(char* inBuffer) {
-            // Launch thread
-            this->p_thread = thread(test, this->p_thread_id);
+            //this->p_thread = thread(test, this->p_thread_id); // test function
+            this->p_thread = thread(compressBufferData, inBuffer, this->p_output_buffer, this->compressedSize); // compress data function
+            this->p_thread = thread(compressBufferData, inBuffer, &(this->p_output_buffer), );
             this->p_launched = true;
         }
 
         void join() {
-            // Join thread
             this->p_thread.join();
         }
 
@@ -75,6 +78,7 @@ class WorkerThread {
             this->p_thread_id = -1;
             this->p_launched = false;
             this->p_output_buffer = NULL;
+            this->compressedSize = 0;
         }
 
         int16_t getID() {
@@ -90,6 +94,7 @@ class WorkerThread {
         bool p_launched;
         char* p_output_buffer;
         thread p_thread;
+        size_t compressedSize;
 };
 // =================================
 // Main Function
@@ -112,6 +117,10 @@ int main(int argc, const char * argv[]) {
     // Array to store compressed output
     // 0 => id=0 compressed data, 1 => id=1 compressed data, etc.
     char* compressed_data_output_buffers[int(input_file.tellg() / CHUNK_SIZE) + 1];
+    size_t 
+
+    // Array to store compressed output size (parallel to above array)
+    size_t compressed_data_sizes[int(input_file.tellg() / CHUNK_SIZE) + 1];
 
     // Array of WorkerThread objects
     WorkerThread* worker_threads[NUM_WORKER_THREADS];
@@ -130,7 +139,8 @@ int main(int argc, const char * argv[]) {
                     worker_threads[i]->join();
 
                     // Get the output buffer
-                    char* output_buffer = worker_threads[i]->getOutputBuffer();
+                    size_t compressed_size;
+                    char* output_buffer = worker_threads[i]->getOutputBuffer(compressed_size);
 
                     // Add the output buffer to the vector in position id
                     compressed_data_output_buffers[worker_threads[i]->getID()] = output_buffer;
@@ -167,7 +177,7 @@ int main(int argc, const char * argv[]) {
         for (int i = 0; i < NUM_WORKER_THREADS; i++) {
             if (worker_threads[i]->isCompleted()) {
                 if (worker_threads[i]->getID() != -1) {
-                    cout << "Joining thread " << i << endl;
+                    cout << "Final join thread " << i << endl;
 
                     // Join the thread
                     worker_threads[i]->join();
@@ -177,7 +187,7 @@ int main(int argc, const char * argv[]) {
 
                     // Add the output buffer to the vector in position id
                     compressed_data_output_buffers[worker_threads[i]->getID()] = output_buffer;
-
+                    
                     // Clear the thread for reuse
                     worker_threads[i]->clear();
 
@@ -187,14 +197,27 @@ int main(int argc, const char * argv[]) {
         }
     }
 
-    // Close the input file
+    // Write the compressed data to the output file
+    ofstream output_file("output.txt");
+    for (int i = 0; i < int(input_file.tellg() / CHUNK_SIZE) + 1; i++) {
+        output_file.write(compressed_data_output_buffers[i], 6);
+    }
+
+    // Close the files
     input_file.close();
+    output_file.close();
 }
 // =================================
 // Function Definitions
 // =================================
 
-// Incomplete function to compress data
-// TODO: Implement this function
-void compressBufferData(char* inBuffer, char* outBuffer, bool* done) {
+// Function to compress data
+void compressBufferData(char* input_buffer, char* output_buffer, size_t& compressedSize) {
+
+    size_t input_size = 16384; // 16KB
+    size_t output_size = ZSTD_compressBound(input_size);
+
+    // compression here
+    compressedSize = ZSTD_compress(output_buffer, output_size, input_buffer, input_size, 1);
+
 }
