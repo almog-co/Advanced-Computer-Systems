@@ -40,6 +40,11 @@ void test(char* output_buffer) {
     }
 }
 
+int getFileSize(const char* filename) {
+    ifstream file(filename, ios::binary | ios::ate);
+    return file.tellg();
+}
+
 // =================================
 // Class/Structure Definitions
 // =================================
@@ -125,10 +130,10 @@ int main(int argc, const char * argv[]) {
 
     // Array to store compressed output
     // 0 => id=0 compressed data, 1 => id=1 compressed data, etc.
-    char* compressed_data_output_buffers[int(input_file.tellg() / CHUNK_SIZE) + 1];
+    char* compressed_data_output_buffers[int(getFileSize(argv[1]) / CHUNK_SIZE) + 1];
 
     // Array to store compressed output size (parallel to above array)
-    size_t compressed_data_sizes[int(input_file.tellg() / CHUNK_SIZE) + 1];
+    size_t compressed_data_sizes[int(getFileSize(argv[1]) / CHUNK_SIZE) + 1];
 
     // Array of WorkerThread objects
     WorkerThread* worker_threads[NUM_WORKER_THREADS];
