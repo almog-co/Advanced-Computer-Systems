@@ -136,12 +136,15 @@ int main(int argc, const char * argv[]) {
         worker_threads[i] = new WorkerThread();
     }
 
+    // Keep track of which chunk we are on
+    int chunk_id = 0;
+
     // For each thread, read 16 KB and launch a worker thread to compress it
     while (!input_file.eof()) {
         for (int i = 0; i < NUM_WORKER_THREADS; i++) {
             if (worker_threads[i]->isCompleted()) {
                 if (worker_threads[i]->getID() != -1) {
-                    cout << "Joining thread " << i << endl;
+                    //cout << "Joining thread " << i << endl;
 
                     // Join the thread
                     worker_threads[i]->join();
@@ -164,7 +167,7 @@ int main(int argc, const char * argv[]) {
                     if (input_file.eof())
                         break;
 
-                    cout << "Launching thread " << i << endl;
+                    //cout << "Launching thread " << i << endl;
 
                     // Read 16 KB from the file
                     char* input_buffer = new char[CHUNK_SIZE];
@@ -174,10 +177,12 @@ int main(int argc, const char * argv[]) {
                     delete worker_threads[i];
 
                     // Launch a worker thread to compress the data
-                    worker_threads[i] = new WorkerThread(i);
+                    worker_threads[i] = new WorkerThread(chunk_id);
                     worker_threads[i]->launch(input_buffer);
 
-                    cout << "Launched thread " << i << endl;
+                    chunk_id++;
+
+                    //cout << "Launched thread " << i << endl;
                 }
             }
         }
@@ -190,7 +195,7 @@ int main(int argc, const char * argv[]) {
         for (int i = 0; i < NUM_WORKER_THREADS; i++) {
             if (worker_threads[i]->isCompleted()) {
                 if (worker_threads[i]->getID() != -1) {
-                    cout << "Final join thread " << i << endl;
+                    //cout << "Final join thread " << i << endl;
 
                     // Join the thread
                     worker_threads[i]->join();
@@ -203,6 +208,7 @@ int main(int argc, const char * argv[]) {
 
                     // Add the output buffer to the vector in position id
                     compressed_data_output_buffers[worker_threads[i]->getID()] = output_buffer;
+
 
                     // Add the output buffer size to the size array in position id
                     compressed_data_sizes[worker_threads[i]->getID()] = output_size;
