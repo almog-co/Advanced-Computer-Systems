@@ -34,7 +34,7 @@ using namespace std;
 // =================================
 
 void compressBufferData(char* input_buffer, char* output_buffer, size_t& compressedSize);
-void test(int16_t thread_id, char** outBuffer) {
+void test(int16_t thread_id) {
     cout << "Hello World from " << thread_id << endl;
 }
 
@@ -57,12 +57,15 @@ class WorkerThread {
             this->p_launched = false;
             this->p_output_buffer = new char[CHUNK_SIZE];
             this->compressedSize = 0;
+            this->compressedSize = 0;
         }
 
         void launch(char* inBuffer) {
             //this->p_thread = thread(test, this->p_thread_id); // test function
+            //this->p_thread = thread(compressBufferData, inBuffer, this->p_output_buffer, this->compressedSize); // compress data function
+            this->p_thread = thread(compressBufferData, inBuffer, &(this->p_output_buffer), ); // test function
             this->p_thread = thread(compressBufferData, inBuffer, this->p_output_buffer, this->compressedSize); // compress data function
-            this->p_thread = thread(compressBufferData, inBuffer, &(this->p_output_buffer), );
+
             this->p_launched = true;
         }
 
@@ -79,6 +82,7 @@ class WorkerThread {
             this->p_launched = false;
             this->p_output_buffer = NULL;
             this->compressedSize = 0;
+            this->compressedSize = 0;
         }
 
         int16_t getID() {
@@ -89,11 +93,16 @@ class WorkerThread {
             return this->p_output_buffer;
         }
 
+        size_t getCompressedSize() {
+            return this->compressedSize;
+        }
+
     private:
         int16_t p_thread_id;
         bool p_launched;
         char* p_output_buffer;
         thread p_thread;
+        size_t compressedSize;
         size_t compressedSize;
 };
 // =================================
@@ -139,11 +148,16 @@ int main(int argc, const char * argv[]) {
                     worker_threads[i]->join();
 
                     // Get the output buffer
-                    size_t compressed_size;
-                    char* output_buffer = worker_threads[i]->getOutputBuffer(compressed_size);
+                    char* output_buffer = worker_threads[i]->getOutputBuffer();
+
+                    // Get the compressed size
+                    size_t output_size = worker_threads[i]->getCompressedSize();
 
                     // Add the output buffer to the vector in position id
                     compressed_data_output_buffers[worker_threads[i]->getID()] = output_buffer;
+
+                    // Add the output buffer size to the size array in position id
+                    compressed_data_sizes[worker_threads[i]->getID()] = output_size;
 
                     // Clear the thread for reuse
                     worker_threads[i]->clear();
@@ -210,6 +224,15 @@ int main(int argc, const char * argv[]) {
 // =================================
 // Function Definitions
 // =================================
+
+// Function to compress data
+void compressBufferData(char* input_buffer, char* output_buffer, size_t& compressedSize) {
+
+    size_t input_size = 16384; // 16KB
+    size_t output_size = ZSTD_compressBound(input_size);
+
+    // compression here
+    compressedSize = ZSTD_compress(output_buffer, output_size, input_buffer, input_size, 1);
 
 // Function to compress data
 void compressBufferData(char* input_buffer, char* output_buffer, size_t& compressedSize) {
