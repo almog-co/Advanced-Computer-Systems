@@ -16,8 +16,12 @@ The program uses the compressBufferData function to compress the input buffer, p
 
 The compressed data is stored in an array of output buffers, parallel to an array of compressed data sizes.
 
+## Prerequisites
+1. ZSTD Library
+2. g++ compiler with C++ version 11
+
 ## Usage
-The program takes a single command-line argument, the name of the input file. The input file must be in binary mode.
+The program takes a single command-line argument, the name of the input file.
 
 The program is designed to be compiled and executed using the following command:
 ```
@@ -31,6 +35,8 @@ The program uses a single thread to read data from the file, dispatch 16KB block
 
 It is important to note that the program uses the ZSTD library and it should be installed on the system before executing the program, otherwise the compilation will fail.
 
+### Changing number of threads
+The number of worker threads used at a given time can be changed by modifying `#define NUM_WORKER_THREADS 6` to any number of the users choosing. 
 
 ## Experimental Results
 
