@@ -34,8 +34,10 @@ using namespace std;
 // =================================
 
 void compressBufferData(char* input_buffer, char* output_buffer, size_t& compressedSize);
-void test(int16_t thread_id) {
-    cout << "Hello World from " << thread_id << endl;
+void test(char* output_buffer) {
+    for (int i = 0; i < CHUNK_SIZE; i++) {
+        output_buffer[i] = 'a';
+    }
 }
 
 // =================================
@@ -62,10 +64,7 @@ class WorkerThread {
 
         void launch(char* inBuffer) {
             //this->p_thread = thread(test, this->p_thread_id); // test function
-            //this->p_thread = thread(compressBufferData, inBuffer, this->p_output_buffer, this->compressedSize); // compress data function
-            this->p_thread = thread(compressBufferData, inBuffer, &(this->p_output_buffer), ); // test function
-            this->p_thread = thread(compressBufferData, inBuffer, this->p_output_buffer, this->compressedSize); // compress data function
-
+            this->p_thread = thread(compressBufferData, inBuffer, this->p_output_buffer, ref(this->compressedSize));
             this->p_launched = true;
         }
 
@@ -103,14 +102,15 @@ class WorkerThread {
         char* p_output_buffer;
         thread p_thread;
         size_t compressedSize;
-        size_t compressedSize;
 };
+
 // =================================
 // Main Function
 // =================================
+
 int main(int argc, const char * argv[]) {
     if (argc != 2) {
-        printf("Usage: %s <input file>", argv[0]);
+        printf("Usage: %s <input file>\n", argv[0]);
         return 1;
     }
 
@@ -126,7 +126,6 @@ int main(int argc, const char * argv[]) {
     // Array to store compressed output
     // 0 => id=0 compressed data, 1 => id=1 compressed data, etc.
     char* compressed_data_output_buffers[int(input_file.tellg() / CHUNK_SIZE) + 1];
-    size_t 
 
     // Array to store compressed output size (parallel to above array)
     size_t compressed_data_sizes[int(input_file.tellg() / CHUNK_SIZE) + 1];
@@ -199,8 +198,14 @@ int main(int argc, const char * argv[]) {
                     // Get the output buffer
                     char* output_buffer = worker_threads[i]->getOutputBuffer();
 
+                    // Get the compressed size
+                    size_t output_size = worker_threads[i]->getCompressedSize();
+
                     // Add the output buffer to the vector in position id
                     compressed_data_output_buffers[worker_threads[i]->getID()] = output_buffer;
+
+                    // Add the output buffer size to the size array in position id
+                    compressed_data_sizes[worker_threads[i]->getID()] = output_size;
                     
                     // Clear the thread for reuse
                     worker_threads[i]->clear();
@@ -214,13 +219,26 @@ int main(int argc, const char * argv[]) {
     // Write the compressed data to the output file
     ofstream output_file("output.txt");
     for (int i = 0; i < int(input_file.tellg() / CHUNK_SIZE) + 1; i++) {
-        output_file.write(compressed_data_output_buffers[i], 6);
+        output_file.write(compressed_data_output_buffers[i], compressed_data_sizes[i]);
     }
 
     // Close the files
     input_file.close();
     output_file.close();
+
+    // Get final input and output file sizes
+    ifstream input_file_size(argv[1], ios::binary);
+    ifstream output_file_size("output.txt", ios::binary);
+
+    // Print input and output file sizes
+    input_file_size.seekg(0, ios::end);
+    output_file_size.seekg(0, ios::end);
+    cout << "Input file size: " << input_file_size.tellg() << endl;
+    cout << "Output file size: " << output_file_size.tellg() << endl;
+
+    return 0;
 }
+
 // =================================
 // Function Definitions
 // =================================
@@ -228,19 +246,9 @@ int main(int argc, const char * argv[]) {
 // Function to compress data
 void compressBufferData(char* input_buffer, char* output_buffer, size_t& compressedSize) {
 
-    size_t input_size = 16384; // 16KB
+    size_t input_size = CHUNK_SIZE;
     size_t output_size = ZSTD_compressBound(input_size);
 
     // compression here
     compressedSize = ZSTD_compress(output_buffer, output_size, input_buffer, input_size, 1);
-
-// Function to compress data
-void compressBufferData(char* input_buffer, char* output_buffer, size_t& compressedSize) {
-
-    size_t input_size = 16384; // 16KB
-    size_t output_size = ZSTD_compressBound(input_size);
-
-    // compression here
-    compressedSize = ZSTD_compress(output_buffer, output_size, input_buffer, input_size, 1);
-
 }
