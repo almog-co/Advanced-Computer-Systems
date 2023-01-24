@@ -233,7 +233,7 @@ int main(int argc, const char * argv[]) {
     }
 
     // Write the compressed data to the output file
-    ofstream output_file("output.txt");
+    ofstream output_file("compressed_data.zst");
     for (int i = 0; i < int(input_file.tellg() / CHUNK_SIZE) + 1; i++) {
         output_file.write(compressed_data_output_buffers[i], compressed_data_sizes[i]);
     }
