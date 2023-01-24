@@ -248,7 +248,7 @@ int main(int argc, const char * argv[]) {
 
     // Get final input and output file sizes
     ifstream input_file_size(argv[1], ios::binary);
-    ifstream output_file_size("output.txt", ios::binary);
+    ifstream output_file_size("compressed_data.zst", ios::binary);
 
     // Print input and output file sizes
     input_file_size.seekg(0, ios::end);
