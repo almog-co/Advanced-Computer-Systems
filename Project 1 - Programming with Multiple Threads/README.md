@@ -14,7 +14,16 @@ The program uses a WorkerThread class to manage the worker threads. The class ha
 
 The program uses the compressBufferData function to compress the input buffer, puts the compressed data into the WorkerThread's output buffer, and provides the compressedSize for that data.
 
-The compressed data is stored in an array of output buffers, parallel to an array of compressed data sizes.
+The compressed data is stored in an array of output buffers, parallel to an array of compressed data sizes. Each WorkerThread has an "id" which keeps track of what order the data is being compressed. In order to ensure that the data is being written in the same order that it was read, all output buffers are placed in the array's index corresponding to its WorkerThread's id.
+
+```
+// Add the output buffer to the vector in position id
+compressed_data_output_buffers[worker_threads[i]->getID()] = output_buffer;
+```
+
+The data is then written (in order) to the output file (compressed_data.zst).
+
+The program prints the input file size, the output (compressed) file size, and the duration of the program.
 
 ## Prerequisites
 1. ZSTD Library
@@ -71,4 +80,4 @@ The data shows a clear trend of decreasing processing time as the number of thre
 
 However, it is important to note that the benefits of utilizing additional threads appear to plateau around 8-12 threads. Beyond this point, increasing the number of threads does not result in a significant decrease in processing time. For example, at 25 threads, the processing time is still 2.50524 seconds, which is slower than the time achieved with 12 threads. 
 
-These findings suggest that for optimal performance, a balance should be struck between the number of threads utilized and the resulting processing time.
+These findings suggest that for optimal performance, a balance should be struck between the number of threads utilized and the resulting processing time.  It is important to note that the number of threads that can be effectively utilized is limited by the hardware being used, as most computers can only run a certain number of threads simultaneously.
