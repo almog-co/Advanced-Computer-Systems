@@ -34,7 +34,7 @@ The program takes a single command-line argument, the name of the input file.
 
 The program is designed to be compiled and executed using the following command:
 ```
-g++ -std=c++11 -lzstd threading.cpp && ./a.out <input file name>
+g++ -std=c++11 -lzstd compress.cpp && ./a.out <input file name>
 ```
 
 The output will be written to a file named "compressed_data.zst" in the current working directory.
