@@ -40,8 +40,36 @@ The number of worker threads used at a given time can be changed by modifying `#
 
 ## Experimental Results
 
+The 1GB file used can be downloaded at [testfiledownload.com](https://testfiledownload.com/).
+
+### Raw Data
+
+| File Size    | Number of Threads | Time (seconds) |
+| ------------ | ----------------- | -------------- |
+| 1 GB (1GB.bin)| 1                 | 3.7311         |
+|               | 2                 | 2.97724        |
+|               | 3                 | 2.81528        |
+|               | 4                 | 2.6185         |
+|               | 5                 | 2.68           |
+|               | 6                 | 2.51608        |
+|               | 7                 | 2.55073        |
+|               | 8                 | 2.54199        |
+|               | 9                 | 2.58192        |
+|               | 10                | 2.4839         |
+|               | 11                | 2.48658        |
+|               | 12                | 2.38829        |
+|               | 20                | 2.56261        |
+|               | 25                | 2.50524        |
+
+### Graphical Representation
+
+![Logo](img/timevsthreads.png)
 
 
 ## Analysis and Conclusion
 
+The data shows a clear trend of decreasing processing time as the number of threads used for processing a 1 GB file (1GB.bin) increases. The fastest processing time recorded was 2.38829 seconds, achieved when utilizing 12 threads. 
 
+However, it is important to note that the benefits of utilizing additional threads appear to plateau around 8-12 threads. Beyond this point, increasing the number of threads does not result in a significant decrease in processing time. For example, at 25 threads, the processing time is still 2.50524 seconds, which is slower than the time achieved with 12 threads. 
+
+These findings suggest that for optimal performance, a balance should be struck between the number of threads utilized and the resulting processing time.
