@@ -28,7 +28,7 @@ using namespace std;
 // Constant Definitions
 // =================================
 
-#define NUM_WORKER_THREADS 6
+#define NUM_WORKER_THREADS 8
 #define CHUNK_SIZE 16384
 
 // =================================
