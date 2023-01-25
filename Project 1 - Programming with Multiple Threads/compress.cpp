@@ -20,7 +20,7 @@
 #include <stdlib.h>
 //#include <zstd.h>
 #include "zstd.h"
-#include <time.h>
+#include <chrono>
 
 using namespace std;
 
@@ -117,7 +117,7 @@ class WorkerThread {
 
 int main(int argc, const char * argv[]) {
     // timing
-    clock_t start = clock();
+    auto start = chrono::high_resolution_clock::now();
 
     if (argc != 2) {
         printf("Usage: %s <input file>\n", argv[0]);
@@ -243,8 +243,8 @@ int main(int argc, const char * argv[]) {
     output_file.close();
 
     // record time
-    clock_t stop = clock();
-    double duration = (double)(stop - start) / CLOCKS_PER_SEC;
+    auto stop = chrono::high_resolution_clock::now();
+    chrono::duration<double> elapsed = stop - start;
 
     // Get final input and output file sizes
     ifstream input_file_size(argv[1], ios::binary);
@@ -255,8 +255,7 @@ int main(int argc, const char * argv[]) {
     output_file_size.seekg(0, ios::end);
     cout << "Input file size: " << input_file_size.tellg() << endl;
     cout << "Output file size: " << output_file_size.tellg() << endl;
-
-    cout << "Time: " << duration << " seconds" << endl;
+    cout << "Duration: " << elapsed.count() << " seconds" << endl;
 
     return 0;
 }
