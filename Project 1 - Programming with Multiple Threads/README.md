@@ -73,6 +73,19 @@ The 1GB file used can be downloaded at [testfiledownload.com](https://testfiledo
 
 ![Logo](img/timevsthreads.png)
 
+### Hardware Environment
+
+| Property | Value |
+| -------- | ----- |
+| CPU Model | Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz |
+| # Cores | 8 Cores |
+| # Threads | 16 Threads |
+| Max Turbo Frequency | 4.80 GHz |
+| Base Frequency | 2.30 GHz |
+| Cache L1 | 64K (per core)
+| Cache L2 | 256K (per core)
+| Cache L3 | 16MB (shared)
+| RAM | 32GB DDR4 2666 MHz |
 
 ## Analysis and Conclusion
 
