@@ -234,7 +234,7 @@ int main(int argc, const char * argv[]) {
 
     // Write the compressed data to the output file
     ofstream output_file("compressed_data.zst");
-    for (int i = 0; i < int(input_file.tellg() / CHUNK_SIZE) + 1; i++) {
+    for (int i = 0; i < int(getFileSize(argv[1]) / CHUNK_SIZE) + 1; i++) {
         output_file.write(compressed_data_output_buffers[i], compressed_data_sizes[i]);
     }
 
@@ -267,7 +267,7 @@ int main(int argc, const char * argv[]) {
 // Function to compress data
 void compressBufferData(char* input_buffer, char* output_buffer, size_t& compressedSize) {
 
-    size_t input_size = CHUNK_SIZE;
+    size_t input_size = strlen(input_buffer);
     size_t output_size = ZSTD_compressBound(input_size);
 
     // compression here
