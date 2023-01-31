@@ -14,7 +14,16 @@ The program uses a WorkerThread class to manage the worker threads. The class ha
 
 The program uses the compressBufferData function to compress the input buffer, puts the compressed data into the WorkerThread's output buffer, and provides the compressedSize for that data.
 
-The compressed data is stored in an array of output buffers, parallel to an array of compressed data sizes.
+The compressed data is stored in an array of output buffers, parallel to an array of compressed data sizes. Each WorkerThread has an "id" which keeps track of what order the data is being compressed. In order to ensure that the data is being written in the same order that it was read, all output buffers are placed in the array's index corresponding to its WorkerThread's id.
+
+```
+// Add the output buffer to the vector in position id
+compressed_data_output_buffers[worker_threads[i]->getID()] = output_buffer;
+```
+
+The data is then written (in order) to the output file (compressed_data.zst).
+
+The program prints the input file size, the output (compressed) file size, and the duration of the program.
 
 ## Prerequisites
 1. ZSTD Library
@@ -25,8 +34,7 @@ The program takes a single command-line argument, the name of the input file.
 
 The program is designed to be compiled and executed using the following command:
 ```
-g++ -std=c++11 -o compress.out -L/usr/local/lib/ -lzstd compress.cpp
-./compress.out <input file>
+g++ -std=c++11 -lzstd compress.cpp && ./a.out <input file name>
 ```
 
 The output will be written to a file named "compressed_data.zst" in the current working directory.
@@ -65,6 +73,19 @@ The 1GB file used can be downloaded at [testfiledownload.com](https://testfiledo
 
 ![Logo](img/timevsthreads.png)
 
+### Hardware Environment
+
+| Property | Value |
+| -------- | ----- |
+| CPU Model | Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz |
+| # Cores | 8 Cores |
+| # Threads | 16 Threads |
+| Max Turbo Frequency | 4.80 GHz |
+| Base Frequency | 2.30 GHz |
+| Cache L1 | 64K (per core)
+| Cache L2 | 256K (per core)
+| Cache L3 | 16MB (shared)
+| RAM | 32GB DDR4 2666 MHz |
 
 ## Analysis and Conclusion
 
@@ -72,4 +93,4 @@ The data shows a clear trend of decreasing processing time as the number of thre
 
 However, it is important to note that the benefits of utilizing additional threads appear to plateau around 8-12 threads. Beyond this point, increasing the number of threads does not result in a significant decrease in processing time. For example, at 25 threads, the processing time is still 2.50524 seconds, which is slower than the time achieved with 12 threads. 
 
-These findings suggest that for optimal performance, a balance should be struck between the number of threads utilized and the resulting processing time.
+These findings suggest that for optimal performance, a balance should be struck between the number of threads utilized and the resulting processing time.  It is important to note that the number of threads that can be effectively utilized is limited by the hardware being used, as most computers can only run a certain number of threads simultaneously.
