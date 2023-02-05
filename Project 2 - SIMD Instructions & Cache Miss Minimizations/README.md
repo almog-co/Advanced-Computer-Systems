@@ -2,7 +2,7 @@
 By: Rojan Karn and Almog Cohen
 
 ## Project Introduction
-This project implement a C/C++ module that carries out high-speed matrix-matrix multiplication by explicitly utilizing x86 SIMD instructions and minimizing cache miss rate via restructuring data access patterns. Matrix-matrix multiplication is a key data processing kernel in many real-life applications, such as machine learning, computer vision, signal processing and scientific computing. The project demonstrates the importance of exploiting data-level parallelism and minimizing cache miss rate.
+This project implements a C/C++ module that carries out high-speed matrix-matrix multiplication by explicitly utilizing x86 SIMD instructions and minimizing cache miss rate via restructuring data access patterns. Matrix-matrix multiplication is a key data processing kernel in many real-life applications, such as machine learning, computer vision, signal processing and scientific computing. The project demonstrates the importance of exploiting data-level parallelism and minimizing cache miss rate.
 
 ## Program Structure
 structure here
