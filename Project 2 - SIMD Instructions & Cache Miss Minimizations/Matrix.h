@@ -103,8 +103,10 @@ public:
     ~Matrix() {
         for (int i = 0; i < size; i++) {
             delete[] matrix[i];
+            delete[] matrix_by_col[i];
         }
         delete[] matrix;
+        delete[] matrix_by_col;
     }
 
     // Print without padding
