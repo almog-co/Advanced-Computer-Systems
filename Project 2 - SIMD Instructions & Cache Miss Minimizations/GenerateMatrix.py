@@ -16,18 +16,17 @@ def generate_matrix(filename, size, use_float=False):
             f.write(' '.join(row) + '\n')
 
 if __name__ == '__main__':
+    # 3x3 matrix
     generate_matrix('MATRIX_3_INT.txt', 3)
     generate_matrix('MATRIX_3_FLOAT.txt', 3, use_float=True)
     print('Matrix 3x3 generated')
 
-    generate_matrix('MATRIX_1000_INT.txt', 100)
-    generate_matrix('MATRIX_1000_FLOAT.txt', 100, use_float=True)
+    # 100x100 matrix
+    generate_matrix('MATRIX_100_INT.txt', 100)
+    generate_matrix('MATRIX_100_FLOAT.txt', 100, use_float=True)
     print('Matrix 100x100 generated')
 
+    # 1000x1000 matrix
     generate_matrix('MATRIX_1000_INT.txt', 1000)
     generate_matrix('MATRIX_1000_FLOAT.txt', 1000, use_float=True)
     print('Matrix 1000x1000 generated')
-
-    generate_matrix('MATRIX_10000_INT.txt', 10000)
-    generate_matrix('MATRIX_10000_FLOAT.txt', 10000, use_float=True)
-    print('Matrix 10000x10000 generated')

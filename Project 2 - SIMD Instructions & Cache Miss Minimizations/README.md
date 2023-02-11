@@ -49,6 +49,41 @@ An example format of the input matrix.txt file is
 This specifics a 3x3 matrix with 1 2 3 in the first row, 4 5 6 in the second row, and 7 8 9 in the third row.
 
 ## Experimental Results
-include raw data, graph (?), hardware env
+
+The comparison between the SIMD instruction and naive matrix multiplication was tested on a 3x3, 10x10, 50x50, 100x100, 250x250, 500x500, 1000x1000, 2000x2000, 5000x5000, and 10000x10000 matrices.
+
+### Raw Data
+
+| Matrix Size (nxn) | SIMD Matrix Multiplication (seconds) | Naive Matrix Multiplication (seconds) |
+| ------------ | ----------------- | -------------- |
+| 3 | 0 | 0 |
+| 10 | 0 | 0 |
+| 50 | 0 | 0 |
+| 100 | 0.001 | 0.003 |
+| 250 | 0.017 | 0.076 |
+| 500 | 0.142 | 0.622 |
+| 1000 | 1.256 | 5.344 |
+| 2000 | 9.665 | 69.751 |
+| 10000 | 151.3 | 2687.129 |
+
+### Graphical Representation
+
+![Logo](img/result.png)
+
+### Hardware Environment
+
+| Property | Value |
+| -------- | ----- |
+| CPU Model | Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz |
+| # Cores | 8 Cores |
+| # Threads | 16 Threads |
+| Max Turbo Frequency | 4.80 GHz |
+| Base Frequency | 2.30 GHz |
+| Cache L1 | 64K (per core)
+| Cache L2 | 256K (per core)
+| Cache L3 | 16MB (shared)
+| RAM | 32GB DDR4 2666 MHz |
 
 ## Analysis and Conclusion
+
+Based on the data presented in the chart, it can be seen that the SIMD (Single Instruction, Multiple Data) version of matrix multiplication is significantly faster than the naive matrix multiplication algorithm. This is because the SIMD version is able to run 8 operations simultaneously, making efficient use of the available processing power. Additionally, the SIMD version also includes cache optimizations, which help to further improve its performance by reducing the number of times it has to access slower main memory. As a result, the SIMD version is able to perform matrix multiplications much more quickly than the naive algorithm, which can be seen for the large 5000x5000 and 10000x10000 matrices. In conclusion, the use of SIMD and cache optimizations has a significant impact on the performance of matrix multiplications, making it a highly efficient and effective solution.
