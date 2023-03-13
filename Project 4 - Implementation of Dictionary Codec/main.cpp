@@ -72,7 +72,7 @@ void printVectorOfPairs(const vector<pair<T1, T2>>& v) {
 }
 
 // vanilla implementation of search for baseline performance
-vector<string> vanillaSearch(const vector<string> lines, string prefix) {
+vector<string> vanillaSearch(const vector<string>& lines, string prefix) {
     vector<string> results;
 
     for (int i = 0; i < lines.size(); i++) {
