@@ -1,1 +1,1 @@
-Project 4 - Implementation of Dictionary Codec
+# Project 4 - Implementation of Dictionary Codec
