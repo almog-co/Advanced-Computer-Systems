@@ -71,6 +71,19 @@ void printVectorOfPairs(const vector<pair<T1, T2>>& v) {
     cout << endl;
 }
 
+// vanilla implementation of search for baseline performance
+vector<string> vanillaSearch(const vector<string> lines, string prefix) {
+    vector<string> results;
+
+    for (int i = 0; i < lines.size(); i++) {
+        if (lines[i].substr(0, prefix.size()) == prefix) {
+            results.push_back(lines[i]);
+        }
+    }
+
+    return results;
+}
+
 int main(int argc, char* argv[]) {
     // Parse command line arguments
     unordered_map<string, string> args = parseArgs(argc, argv);
