@@ -114,5 +114,10 @@ int main(int argc, char* argv[]) {
     cout << endl;
     vector<pair<string, vector<int>>> words = tree.searchPrefix("ap");
     printVectorOfPairs(words);
+
+    // Vanilla implementation of "ap" prefix search
+    // will be very slow on main file so comment this out when testing
+    vector<string> van = vanillaSearch(lines, "ap");
+    printVector(van);
     
 }
