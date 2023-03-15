@@ -71,6 +71,50 @@ void printVectorOfPairs(const vector<pair<T1, T2>>& v) {
     cout << endl;
 }
 
+// recursive helper function for merging trees
+void mergeNodes(PrefixTreeNode* node1, PrefixTreeNode* node2) {
+    // base case
+    if (node2 == nullptr) return;
+
+    if (node1 == nullptr) {
+        node1 = new PrefixTreeNode(node2->val);
+    }
+
+    // merge original file indices
+    for (int i = 0; i < node2->originalFileIndices.size(); i++) {
+        node1->originalFileIndices.push_back(node2->originalFileIndices[i]);
+    }
+
+    // if the nodes represent the same word, keep isWord flag as true
+    if (node1->val == node2->val && node2->isWord) {
+        node1->isWord = true;
+    }
+
+    // merge child nodes
+    for (int i = 0; i < node2->children.size(); i++) {
+        if (node2->children[i] != nullptr) {
+            if (node1->children[i] == nullptr) {
+                node1->children[i] = new PrefixTreeNode(node2->children[i]->val);
+            }
+            mergeNodes(node1->children[i], node2->children[i]);
+        }
+    }
+
+}
+
+// function to merge two trees
+PrefixTree mergeTrees(PrefixTree& tree1, PrefixTree& tree2) {
+    // merge all nodes from tree2 into tree1
+    mergeNodes(tree1.root, tree2.root);
+
+    // return tree
+    PrefixTree ret_tree = tree1;
+
+    // return merged tree
+    return ret_tree;
+}
+
+
 // vanilla implementation of search for baseline performance
 vector<string> vanillaSearch(const vector<string>& lines, string prefix) {
     vector<string> results;
@@ -119,5 +163,18 @@ int main(int argc, char* argv[]) {
     // will be very slow on main file so comment this out when testing
     vector<string> van = vanillaSearch(lines, "ap");
     printVector(van);
+    cout << endl;
     
+    // testing merge function
+    PrefixTree tree2;
+    tree2.insert("dog", 0);
+    tree2.insert("app", 1);
+    tree2.insert("ape", 2);
+    tree2.insert("and", 3);
+
+    PrefixTree mergedTree;
+    mergedTree = mergeTrees(tree, tree2);
+    cout << "Merged Tree: " << endl;
+    mergedTree.print();
+
 }

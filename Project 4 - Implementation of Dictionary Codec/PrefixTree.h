@@ -60,6 +60,9 @@ public:
 
 class PrefixTree {
 public:
+    // making root public for merging function
+    PrefixTreeNode* root;
+
     PrefixTree() {
         root = new PrefixTreeNode();
     }
@@ -116,7 +119,8 @@ public:
         printHelper(curr);
     }
 private:
-    PrefixTreeNode* root;
+    // making root public for merging function
+    //PrefixTreeNode* root;
 
     void printHelper(PrefixTreeNode* curr) {
         curr->print();
