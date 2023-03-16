@@ -11,7 +11,7 @@ using namespace std;
 
 #define NUM_WORKER_THREADS 4
 
-void buildPrefixTree(PrefixTree& tree, const vector<string>& lines);
+void buildPrefixTree(PrefixTree& tree, const vector<string>& lines, const int& chunk_id);
 
 /////////////////////////
 //   WorkerThread Class
@@ -24,14 +24,14 @@ class WorkerThread {
             this->p_launched = false;
         }
 
-        WorkerThread(const int16_t thread_id) {
+        WorkerThread(const int thread_id) {
             this->p_thread_id = thread_id;
             this->p_launched = false;
         }
 
-        void launch(vector<string> lines) {
+        void launch(const vector<string>& lines, const int& chunk_id) {
             cout << "Thread launching with lines size: " << lines.size() << endl;
-            this->p_thread = thread(buildPrefixTree, ref(this->workerTree), lines);
+            this->p_thread = thread(buildPrefixTree, ref(this->workerTree), lines, chunk_id);
             this->p_launched = true;
             cout << "Exiting the launch function" << endl;
         }
@@ -58,7 +58,7 @@ class WorkerThread {
         }
 
     private:
-        int16_t p_thread_id;
+        int p_thread_id;
         bool p_launched;
         thread p_thread;
         PrefixTree workerTree;
@@ -70,10 +70,10 @@ class WorkerThread {
 
 // function for threads to use to build trees
 // this function may be causing a segmentation fault when using biggertext.txt and multiple threads
-void buildPrefixTree(PrefixTree& tree, const vector<string>& lines) {
+void buildPrefixTree(PrefixTree& tree, const vector<string>& lines, const int& chunk_id) {
     cout << "Entered the buildPrefixTree function" << endl;
     for (int i = 0; i < lines.size(); i++) {
-        tree.insert(lines[i], i);
+        tree.insert(lines[i], (i+(chunk_id * NUM_WORKER_THREADS))); // need to figure out how to get proper index
         //cout << "Inserted: " << lines[i] << endl;
         //cout << "Inserted " << lines[i] << " into tree" << endl;
         //cout << "i: " << endl;
@@ -292,6 +292,7 @@ int main(int argc, char* argv[]) {
     // vector of PrefixTrees from threads
     vector<PrefixTree> threadTrees;
 
+    // tracks which chunk we are on
     int chunk_id = 0;
     
     //while (!file.eof()) {
@@ -341,7 +342,7 @@ int main(int argc, char* argv[]) {
 
                     // Launch a worker thread to compress the data
                     worker_threads[i] = new WorkerThread(chunk_id);
-                    worker_threads[i]->launch(lines);
+                    worker_threads[i]->launch(lines, chunk_id);
                     cout << "Launched thread number " << chunk_id << endl;
 
                     chunk_id++;
@@ -394,5 +395,42 @@ int main(int argc, char* argv[]) {
     // final tree is in mergedTree now
     cout << endl << "Multi threading tree result: " << endl;
     mergedTree.print();
+
+
+    // USER INTERFACE
+    cout << "User Search:" << endl << endl;
+    int search_option;
+
+    while(1) {
+        cout << "Enter search option: " << endl;
+        cout << "(1) Search word" << endl;
+        cout << "(2) Search prefix" << endl;
+        cout << "(3) Quit program" << endl; 
+        cout << "Option: ";
+        cin >> search_option;
+        cout << endl;
+
+        if (search_option == 1) {
+            string search_word;
+            cout << "Enter word you would like to search for: ";
+            cin >> search_word;
+            vector<int> searchWord_indices;
+            searchWord_indices = mergedTree.search(search_word);
+            cout << "Indices for word: " << search_word << ": " << endl;
+            printVector(searchWord_indices);
+        } else if (search_option == 2) {
+            string search_prefix;
+            cout << "Enter prefix you would like to search for: ";
+            cin >> search_prefix;
+            vector<pair<string, vector<int>>> searchPrefix_indices;
+            searchPrefix_indices = mergedTree.searchPrefix(search_prefix);
+            cout << "Results for prefix: " << search_prefix << ": " << endl;
+            printVectorOfPairs(searchPrefix_indices);
+        } else if (search_option == 3) {
+            cout << "Exiting program..." << endl;
+            break;
+        }
+    }
+
 
 }
