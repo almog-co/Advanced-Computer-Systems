@@ -9,7 +9,7 @@
 
 using namespace std;
 
-#define NUM_WORKER_THREADS 8
+#define NUM_WORKER_THREADS 4
 
 void buildPrefixTree(PrefixTree& tree, const vector<string>& lines);
 
@@ -29,9 +29,11 @@ class WorkerThread {
             this->p_launched = false;
         }
 
-        void launch(const vector<string>& lines) {
-            this->p_thread = thread(buildPrefixTree, workerTree, lines);
+        void launch(vector<string> lines) {
+            cout << "Thread launching with lines size: " << lines.size() << endl;
+            this->p_thread = thread(buildPrefixTree, ref(this->workerTree), lines);
             this->p_launched = true;
+            cout << "Exiting the launch function" << endl;
         }
 
         void join() {
@@ -67,15 +69,23 @@ class WorkerThread {
 ///////////////////////////
 
 // function for threads to use to build trees
+// this function may be causing a segmentation fault when using biggertext.txt and multiple threads
 void buildPrefixTree(PrefixTree& tree, const vector<string>& lines) {
+    cout << "Entered the buildPrefixTree function" << endl;
     for (int i = 0; i < lines.size(); i++) {
         tree.insert(lines[i], i);
-        if (i % 1000 == 0) cout << "Inserted " << i << " words" << endl;
+        //cout << "Inserted: " << lines[i] << endl;
+        //cout << "Inserted " << lines[i] << " into tree" << endl;
+        //cout << "i: " << endl;
+        //if (i % 1000 == 0) cout << "Inserted " << i << " words" << endl;
     }
+    cout << "Exiting buildPrefixTree function. Tree: " << endl;
+    tree.print();
 }
 
 // Parse input file in chunks and return a vector of strings
-vector<string> parseFile(const string& filename, const int& chunk_size) {
+vector<string> parseFile(const string& filename, const int& chunk_size, const int& chunk_id) {
+    cout << "Entering parseFile function" << endl;
     vector<string> lines;
     ifstream file(filename);
 
@@ -83,10 +93,21 @@ vector<string> parseFile(const string& filename, const int& chunk_size) {
         cout << "Could not open file: " << filename << endl;
         exit(1);
     }
+
+    int chunks_already_read = chunk_size * (chunk_id+1);
+
     string line;
     // while (getline(file, line)) {
     //     lines.push_back(line);
     // }
+
+    // skip over all of the lines that have already been read
+    int i = 0;
+    while (i < (chunks_already_read-chunk_size)) {
+        getline(file, line);
+        i++;
+    }
+
     // reads file in chunks instead of reading the file out completely
     for (int i = 0; i < chunk_size; i++) {
         if (getline(file, line)) {
@@ -97,6 +118,7 @@ vector<string> parseFile(const string& filename, const int& chunk_size) {
         }
     }
     file.close();
+    cout << "Exiting parseFile function" << endl;
     return lines;
 }
 
@@ -211,6 +233,8 @@ int main(int argc, char* argv[]) {
 
     // determine how much of the file each thread will work with
     int chunk_size = num_lines / NUM_WORKER_THREADS;
+
+    cout << "Chunk size: " << chunk_size << endl;
     
     // // Parse input file
     // cout << "Parsing input file..." << endl;
@@ -270,43 +294,63 @@ int main(int argc, char* argv[]) {
 
     int chunk_id = 0;
     
-    for (int i = 0; i < NUM_WORKER_THREADS; i++) {
-        if (worker_threads[i]->isCompleted()) {
-            if (worker_threads[i]->getID() != -1) {
+    //while (!file.eof()) {
+        for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+            if (worker_threads[i]->isCompleted()) {
+                if (worker_threads[i]->getID() != -1) {
 
-                // Join the thread
-                worker_threads[i]->join();
+                    // Join the thread
+                    worker_threads[i]->join();
 
-                // Get the threads resulting tree
-                PrefixTree tree = worker_threads[i]->getTree();
+                    // Get the threads resulting tree
+                    PrefixTree tree = worker_threads[i]->getTree();
 
-                // Add the tree to the vector
-                threadTrees.push_back(tree);
+                    // Add the tree to the vector
+                    threadTrees.push_back(tree);
 
-                // Clear the thread for reuse
-                worker_threads[i]->clear();
-            } else {
-                // parse file in chunks
-                vector<string> lines = parseFile(args["filename"], chunk_size);
+                    // Clear the thread for reuse
+                    worker_threads[i]->clear();
+                } else {
+                    //if (file.eof()) break;
+                    // parse file in chunks
+                    vector<string> lines = parseFile(args["filename"], chunk_size, chunk_id);
+                    // vector<string> lines;
+                    // string line;
 
-                // check if end of file
-                // does end of file need to be checked for?
-                // if we already have a specified number of threads and looping through those threads only
-                // parseFile handles checking for end of file
+                    // for (int i = 0; i < chunk_size; i++) {
+                    //     cout << "Looping " << endl;
+                    //     if (getline(file, line)) { // loop is not entering here
+                    //         cout << "Line: " << line << endl;
+                    //         lines.push_back(line);
+                    //         cout << "Line added to lines. Lines size: " << lines.size() << endl;
+                    //     } else { // end of file
+                    //         //lines.push_back("end of file"); // not sure how to indicate end of file when reading in chunks
+                    //         cout << "Breaking" << endl;
+                    //         break;
+                    //     }
+                    // }
 
-                // Delete old worker thread
-                delete worker_threads[i];
 
-                // Launch a worker thread to compress the data
-                worker_threads[i] = new WorkerThread(chunk_id);
-                worker_threads[i]->launch(lines);
+                    // check if end of file
+                    // does end of file need to be checked for?
+                    // if we already have a specified number of threads and looping through those threads only
+                    // parseFile handles checking for end of file
 
-                chunk_id++;
+                    // Delete old worker thread
+                    delete worker_threads[i];
 
-                //cout << "Launched thread " << i << endl;
+                    // Launch a worker thread to compress the data
+                    worker_threads[i] = new WorkerThread(chunk_id);
+                    worker_threads[i]->launch(lines);
+                    cout << "Launched thread number " << chunk_id << endl;
+
+                    chunk_id++;
+
+                    //cout << "Launched thread " << i << endl;
+                }
             }
         }
-    }
+    //}
 
     // Join all threads remaining
     bool all_threads_completed = false;
@@ -335,14 +379,20 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    file.close();
+
+    cout << "Number of thread trees: " << threadTrees.size() << endl;
+
     // merge all trees together
     PrefixTree mergedTree;
     for (int i = 0; i < threadTrees.size(); i++) {
+        cout << "Individual tree before merge: " << endl;
+        threadTrees[i].print();
         mergeTrees(mergedTree, threadTrees[i]);
     }
 
     // final tree is in mergedTree now
-    cout << endl << "multi threading tree result: " << endl;
+    cout << endl << "Multi threading tree result: " << endl;
     mergedTree.print();
 
 }
