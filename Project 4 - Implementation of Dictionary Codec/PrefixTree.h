@@ -66,8 +66,13 @@ public:
     PrefixTree() {
         root = new PrefixTreeNode();
     }
-    
-    // ~PrefixTree();
+
+    // Merge another tree into this tree
+    void merge(PrefixTree* other) {
+        mergeHelper(root, other->root);
+    }
+
+    // Inserts a word into the tree
     void insert(const string& word, int index) {
         PrefixTreeNode* curr = root;
         for (int i = 0; i < word.length(); i++) {
@@ -91,6 +96,9 @@ public:
                 return vector<int>();
             }
             curr = curr->getChild(c);
+        }
+        if (!curr->isWord) {
+            return vector<int>();
         }
         return curr->originalFileIndices;
     }
@@ -118,10 +126,8 @@ public:
         PrefixTreeNode* curr = root;
         printHelper(curr);
     }
-private:
-    // making root public for merging function
-    //PrefixTreeNode* root;
 
+private:
     void printHelper(PrefixTreeNode* curr) {
         curr->print();
         for (int i = 0; i < curr->children.size(); i++) {
@@ -138,6 +144,36 @@ private:
         for (int i = 0; i < curr->children.size(); i++) {
             if (curr->children[i] != nullptr) {
                 searchPrefixHelper(curr->children[i], prefix + curr->children[i]->val, words);
+            }
+        }
+    }
+
+    // Given two nodes, merge the second node into the first node
+    void mergeHelper(PrefixTreeNode* node1, PrefixTreeNode* node2) {
+        // base case
+        if (node2 == nullptr) return;
+
+        if (node1 == nullptr) {
+            node1 = new PrefixTreeNode(node2->val);
+        }
+
+        // merge original file indices
+        for (int i = 0; i < node2->originalFileIndices.size(); i++) {
+            node1->originalFileIndices.push_back(node2->originalFileIndices[i]);
+        }
+
+        // if the nodes represent the same word, keep isWord flag as true
+        if (node1->val == node2->val && node2->isWord) {
+            node1->isWord = true;
+        }
+
+        // merge child nodes
+        for (int i = 0; i < node2->children.size(); i++) {
+            if (node2->children[i] != nullptr) {
+                if (node1->children[i] == nullptr) {
+                    node1->children[i] = new PrefixTreeNode(node2->children[i]->val);
+                }
+                mergeHelper(node1->children[i], node2->children[i]);
             }
         }
     }
