@@ -10,6 +10,7 @@
 #include <fstream>
 #include <thread>
 #include "PrefixTree.h"
+#include <chrono>
 
 using namespace std;
 
@@ -93,6 +94,13 @@ unordered_map<string, string> parseArgs(int argc, char* argv[]) {
         i++;
     }
 
+    // check if user specified vanilla search mode
+    if (args.find("mode") == args.end()) {
+        args["mode"] = "optimized";
+    } else {
+        args["mode"] = "vanilla";
+    }
+
     return args;
 }
 
@@ -115,14 +123,42 @@ void printVectorOfPairs(const vector<pair<T1, T2>>& v) {
     cout << endl;
 }
 
-// vanilla implementation of search for baseline performance
-vector<string> vanillaSearch(const vector<string>& lines, string prefix) {
-    vector<string> results;
+// vanilla implementation of prefix search for baseline performance
+// return form matches PrefixTree return form
+vector<pair<string, vector<int>>> vanillaSearchPrefix(const string& filename, string prefix) {
+    vector<pair<string, vector<int>>> results;
+    ifstream file(filename);
+    string line;
+    int i = 0;
 
-    for (int i = 0; i < lines.size(); i++) {
-        if (lines[i].substr(0, prefix.size()) == prefix) {
-            results.push_back(lines[i]);
+    while (getline(file, line)) {
+        // Convert to lowercase
+        transform(line.begin(), line.end(), line.begin(), ::tolower);
+        if (line.substr(0, prefix.size()) == prefix) {
+            vector<int> curr_index;
+            curr_index.push_back(i);
+            results.push_back(make_pair(line, curr_index));
         }
+        i++;
+    }
+
+    return results;
+}
+
+// vanilla implementation of word search for baseline performance
+// return form matches PrefixTree return form
+vector<int> vanillaSearchWord(const string& filename, const string& word) {
+    vector<int> results;
+    ifstream file(filename);
+    string line;
+    int i = 0;
+    while (getline(file, line)) {
+        // Convert to lowercase
+        transform(line.begin(), line.end(), line.begin(), ::tolower);
+        if (line == word) {
+            results.push_back(i);
+        }
+        i++;
     }
 
     return results;
@@ -205,49 +241,52 @@ int main(int argc, char* argv[]) {
     // Parse command line arguments
     unordered_map<string, string> args = parseArgs(argc, argv);
 
-    // Read in file into memory. Number of vectors == number of threads
-    vector< vector<string> > lines = vectorizeFile(args["filename"]);
-
-    // Array of WorkerThread objects
-    WorkerThread* worker_threads[NUM_WORKER_THREADS];
-    for (int i = 0; i < NUM_WORKER_THREADS; i++) {
-        worker_threads[i] = new WorkerThread();
-    }
-
-    // Encode the file using the worker threads
-    for (int i = 0; i < NUM_WORKER_THREADS; i++) {
-        // Verify that the thread is not already running
-        if (worker_threads[i]->isLaunched() == false) {
-            // Get number of lines in the previous chunks
-            int num_lines = 0;
-            for (int j = 0; j < i; j++) {
-                num_lines += lines[j].size();
-            }
-
-            // Launch thread to encode the file
-            worker_threads[i]->launch(lines[i], num_lines);
-        } else {
-            cout << "Error launching thread" << endl;
-            exit(1);
-        }
-    }
-
     // List of trees for each thread
     vector<PrefixTree*> trees;
 
-    // Wait for all threads to finish
-    bool all_threads_finished = false;
-    while (!all_threads_finished) {
-        all_threads_finished = true;
+    if (args["mode"] == "optimized") {
+        // Read in file into memory. Number of vectors == number of threads
+        vector< vector<string> > lines = vectorizeFile(args["filename"]);
+
+        // Array of WorkerThread objects
+        WorkerThread* worker_threads[NUM_WORKER_THREADS];
         for (int i = 0; i < NUM_WORKER_THREADS; i++) {
-            if (!worker_threads[i]->isCompleted()) {
-                all_threads_finished = false;
+            worker_threads[i] = new WorkerThread();
+        }
+
+        // Encode the file using the worker threads
+        for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+            // Verify that the thread is not already running
+            if (worker_threads[i]->isLaunched() == false) {
+                // Get number of lines in the previous chunks
+                int num_lines = 0;
+                for (int j = 0; j < i; j++) {
+                    num_lines += lines[j].size();
+                }
+
+                // Launch thread to encode the file
+                worker_threads[i]->launch(lines[i], num_lines);
             } else {
-                // Add the tree from the thread to the list of trees
-                worker_threads[i]->join();
-                trees.push_back(worker_threads[i]->getTree());
+                cout << "Error launching thread" << endl;
+                exit(1);
             }
         }
+
+        // Wait for all threads to finish
+        bool all_threads_finished = false;
+        while (!all_threads_finished) {
+            all_threads_finished = true;
+            for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+                if (!worker_threads[i]->isCompleted()) {
+                    all_threads_finished = false;
+                } else {
+                    // Add the tree from the thread to the list of trees
+                    worker_threads[i]->join();
+                    trees.push_back(worker_threads[i]->getTree());
+                }
+            }
+        }
+
     }
 
     // Combine the resulting PrefixTrees from each thread
@@ -282,18 +321,61 @@ int main(int argc, char* argv[]) {
             cin >> search_word;
             transform(search_word.begin(), search_word.end(), search_word.begin(), ::tolower);
             vector<int> searchWord_indices;
-            searchWord_indices = tree.search(search_word);
-            cout << "Indices for word: " << search_word << ": " << endl;
-            printVector(searchWord_indices);
+
+            // timing
+            auto start = chrono::high_resolution_clock::now();
+
+            // check for search mode - optimized or vanilla
+            if (args["mode"] == "optimized") {
+                searchWord_indices = tree.search(search_word);
+            } else if (args["mode"] == "vanilla") {
+                searchWord_indices = vanillaSearchWord(args["filename"], search_word);
+            }
+
+            // print results
+            cout << "Indices for word: " << search_word << endl;
+            if (searchWord_indices.size() == 0) {
+                cout << "No results found" << endl;
+            } else {
+                printVector(searchWord_indices);
+            }
+
+            // record timing and print
+            auto stop = chrono::high_resolution_clock::now();
+            chrono::duration<double> elapsed = stop - start;
+            cout << "Mode: " << args["mode"] << endl;
+            cout << "Duration: " << elapsed.count() << " seconds" << endl << endl;
         } else if (search_option == 2) {
             string search_prefix;
             cout << "Enter prefix you would like to search for: ";
             cin >> search_prefix;
             transform(search_prefix.begin(), search_prefix.end(), search_prefix.begin(), ::tolower);
             vector<pair<string, vector<int>>> searchPrefix_indices;
-            searchPrefix_indices = tree.searchPrefix(search_prefix);
-            cout << "Results for prefix: " << search_prefix << ": " << endl;
-            printVectorOfPairs(searchPrefix_indices);
+
+            // timing
+            auto start = chrono::high_resolution_clock::now();
+
+            // check for search mode - optimized or vanilla
+            if (args["mode"] == "optimized") {
+                searchPrefix_indices = tree.searchPrefix(search_prefix);
+            } else if (args["mode"] == "vanilla") {
+                searchPrefix_indices = vanillaSearchPrefix(args["filename"], search_prefix);
+            }
+
+            // print results
+            cout << "Results for prefix: " << search_prefix << endl;
+            if (searchPrefix_indices.size() == 0) {
+                cout << "No results found" << endl;
+            } else {
+                printVectorOfPairs(searchPrefix_indices);
+            }
+
+            // record timing and print
+            auto stop = chrono::high_resolution_clock::now();
+            chrono::duration<double> elapsed = stop - start;
+            cout << "Mode: " << args["mode"] << endl;
+            cout << "Duration: " << elapsed.count() << " seconds" << endl << endl;
+
         } else if (search_option == 3) {
             cout << "Exiting program..." << endl;
             break;
