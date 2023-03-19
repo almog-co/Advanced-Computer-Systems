@@ -131,21 +131,25 @@ void printVectorOfPairs(const vector<pair<T1, T2>>& v) {
 
 // vanilla implementation of prefix search for baseline performance
 // return form matches PrefixTree return form
-vector<pair<string, vector<int>>> vanillaSearchPrefix(const string& filename, string prefix) {
+vector<pair<string, vector<int>>> vanillaSearchPrefix(const vector<vector<string>>& lines, string prefix) {
     vector<pair<string, vector<int>>> results;
-    ifstream file(filename);
-    string line;
-    int i = 0;
-
-    while (getline(file, line)) {
-        // Convert to lowercase
-        transform(line.begin(), line.end(), line.begin(), ::tolower);
-        if (line.substr(0, prefix.size()) == prefix) {
-            vector<int> curr_index;
-            curr_index.push_back(i);
-            results.push_back(make_pair(line, curr_index));
+    unordered_map<string, vector<int>> results_map;
+    int k = 0;
+    for (int i = 0; i < lines.size(); i++) {
+        for (int j = 0; j < lines[i].size(); j++) {
+            if (lines[i][j].substr(0, prefix.length()) == prefix) {
+                if (results_map.find(lines[i][j]) == results_map.end()) {
+                    results_map[lines[i][j]] = vector<int>();
+                }
+                results_map[lines[i][j]].push_back(k);
+            }
+            k++;
         }
-        i++;
+    }
+
+    // Convert results_map to results
+    for (auto it = results_map.begin(); it != results_map.end(); it++) {
+        results.push_back(make_pair(it->first, it->second));
     }
 
     return results;
@@ -153,18 +157,16 @@ vector<pair<string, vector<int>>> vanillaSearchPrefix(const string& filename, st
 
 // vanilla implementation of word search for baseline performance
 // return form matches PrefixTree return form
-vector<int> vanillaSearchWord(const string& filename, const string& word) {
+vector<int> vanillaSearchWord(const vector< vector<string> >& lines, const string& word) {
     vector<int> results;
-    ifstream file(filename);
-    string line;
-    int i = 0;
-    while (getline(file, line)) {
-        // Convert to lowercase
-        transform(line.begin(), line.end(), line.begin(), ::tolower);
-        if (line == word) {
-            results.push_back(i);
+    int k = 0;
+    for (int i = 0; i < lines.size(); i++) {
+        for (int j = 0; j < lines[i].size(); j++) {
+            if (lines[i][j] == word) {
+                results.push_back(k);
+            }
+            k++;
         }
-        i++;
     }
 
     return results;
@@ -196,12 +198,6 @@ vector<vector<string>> vectorizeFile(const string& filename) {
         }
         i++;
     }
-    
-    // while (getline(file, line)) {
-    //     // Convert to lowercase
-    //     transform(line.begin(), line.end(), line.begin(), ::tolower);
-    //     all_lines.push_back(line);
-    // }
 
     // Determine how many lines each thread will work with
     int chunk_size = all_lines.size() / NUM_WORKER_THREADS;
@@ -344,9 +340,11 @@ int main(int argc, char* argv[]) {
     }
 
     int* mapping = new int[mapping_size];
+    int k = 0;
     for (int i = 0; i < mappings.size(); i++) {
         for (int j = 0; j < mappings[i]->size(); j++) {
-            mapping[i * mappings[i]->size() + j] = mappings[i]->at(j).second;
+            mapping[k] = mappings[i]->at(j).second;
+            k++;
         }
     }
 
@@ -355,29 +353,19 @@ int main(int argc, char* argv[]) {
         mapping[i] = 0;
     }
 
-    // vector<pair<string, int>> mapping;
-    // for (int i = 0; i < mappings.size(); i++) {
-    //     for (int j = 0; j < mappings[i]->size(); j++) {
-    //         mapping.push_back(mappings[i]->at(j));
-    //     }
-    // }
-
-    // Print the mapping
-    // for (int i = 0; i < mapping.size(); i++) {
-    //     cout << mapping[i].first << " " << mapping[i].second << endl;
-    // }
-
     // USER INTERFACE
-    cout << "User Search:" << endl << endl;
     int search_option;
 
     while(1) {
         cout << "Enter search option: " << endl;
         cout << "(1) Search word" << endl;
         cout << "(2) Search prefix" << endl;
-        cout << "(3) Quit program" << endl; 
+        cout << "(3) Run word benchmark (searches for 100 random words)" << endl;
+        cout << "(4) Run prefix benchmark (searches for 100 random prefixes)" << endl;
+        cout << "(5) Quit program" << endl; 
         cout << "Option: ";
         cin >> search_option;
+        cout << endl;
         cout << endl;
 
         if (cin.fail()) {
@@ -387,6 +375,7 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
+        // Search word
         if (search_option == 1) {
             string search_word;
             cout << "Enter word you would like to search for: ";
@@ -401,10 +390,11 @@ int main(int argc, char* argv[]) {
             if (args["mode"] == "optimized") {
                 searchWord_indices = tree.searchMappingSIMD(mapping, mapping_size, search_word);
             } else if (args["mode"] == "vanilla") {
-                searchWord_indices = vanillaSearchWord(args["filename"], search_word);
+                searchWord_indices = vanillaSearchWord(lines, search_word);
             }
 
             // print results
+            cout << endl;
             cout << "Indices for word: " << search_word << endl;
             if (searchWord_indices.size() == 0) {
                 cout << "No results found" << endl;
@@ -417,7 +407,10 @@ int main(int argc, char* argv[]) {
             chrono::duration<double> elapsed = stop - start;
             cout << "Mode: " << args["mode"] << endl;
             cout << "Duration: " << elapsed.count() << " seconds" << endl << endl;
-        } else if (search_option == 2) {
+        } 
+        
+        // Search prefix
+        else if (search_option == 2) {
             string search_prefix;
             cout << "Enter prefix you would like to search for: ";
             cin >> search_prefix;
@@ -431,10 +424,11 @@ int main(int argc, char* argv[]) {
             if (args["mode"] == "optimized") {
                 searchPrefix_indices = tree.searchPrefixMappingSIMD(mapping, mapping_size, search_prefix);
             } else if (args["mode"] == "vanilla") {
-                searchPrefix_indices = vanillaSearchPrefix(args["filename"], search_prefix);
+                searchPrefix_indices = vanillaSearchPrefix(lines, search_prefix);
             }
 
             // print results
+            cout << endl;
             cout << "Results for prefix: " << search_prefix << endl;
             if (searchPrefix_indices.size() == 0) {
                 cout << "No results found" << endl;
@@ -448,10 +442,84 @@ int main(int argc, char* argv[]) {
             cout << "Mode: " << args["mode"] << endl;
             cout << "Duration: " << elapsed.count() << " seconds" << endl << endl;
 
-        } else if (search_option == 3) {
+        }
+        
+        // Run word benchmark (searches for 100 random words)
+        else if (search_option == 3) {
+            // Start timer
+            auto start = chrono::high_resolution_clock::now();
+
+            // Search for 100 random words
+            for (int i = 0; i < 100; i++) {
+                int rand_mapping_index = rand() % mappings.size();
+                int rand_word_index = rand() % mappings[rand_mapping_index]->size();
+
+                string search_word = mappings[rand_mapping_index]->at(rand_word_index).first;
+                vector<int> searchWord_indices;
+
+                // check for search mode - optimized or vanilla
+                if (args["mode"] == "optimized") {
+                    searchWord_indices = tree.searchMappingSIMD(mapping, mapping_size, search_word);
+                } else if (args["mode"] == "vanilla") {
+                    searchWord_indices = vanillaSearchWord(lines, search_word);
+                }
+            }
+
+            // Stop timer
+            auto stop = chrono::high_resolution_clock::now();
+
+            // Print results
+            chrono::duration<double> elapsed = stop - start;
+            cout << "Searched for 100 random words..." << endl;
+            cout << "Mode: " << args["mode"] << endl;
+            cout << "Avg. Duration: " << elapsed.count() / 100 << " seconds" << endl << endl;
+        }
+        
+        // Run prefix benchmark (searches for 100 random prefixes)
+        else if (search_option == 4) {
+            // Ask user the length of the prefix
+            int prefix_length;
+            cout << "Enter length of prefix: ";
+            cin >> prefix_length;
+            cout << endl;
+
+            // Start timer
+            auto start = chrono::high_resolution_clock::now();
+
+            // Search for 100 random prefixes
+            for (int i = 0; i < 100; i++) {
+                string random_prefix = "";
+                for (int j = 0; j < prefix_length; j++) {
+                    random_prefix += (char) (rand() % 26 + 97);
+                }
+
+                vector<pair<string, vector<int>>> searchPrefix_indices;
+
+                if (args["mode"] == "optimized") {
+                    searchPrefix_indices = tree.searchPrefixMappingSIMD(mapping, mapping_size, random_prefix);
+                } else if (args["mode"] == "vanilla") {
+                    searchPrefix_indices = vanillaSearchPrefix(lines, random_prefix);
+                }
+            }
+
+            // Stop timer
+            auto stop = chrono::high_resolution_clock::now();
+
+            // Print results
+            chrono::duration<double> elapsed = stop - start;
+            cout << "Searched for 100 random prefixes..." << endl;
+            cout << "Mode: " << args["mode"] << endl;
+            cout << "Avg. Duration: " << elapsed.count() / 100 << " seconds" << endl << endl;
+        }
+
+        // Quit program
+        else if (search_option == 5) {
             cout << "Exiting program..." << endl;
             break;
-        } else {
+        } 
+        
+        // Unknown option entered
+        else {
             cout << "Invalid option. Please try again." << endl;
         }
     }
