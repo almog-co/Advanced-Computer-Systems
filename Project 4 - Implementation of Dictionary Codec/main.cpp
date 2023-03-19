@@ -18,13 +18,13 @@ using namespace std;
  * Preprocessor variables
  **********************************************************/
 
-#define NUM_WORKER_THREADS 4
+#define NUM_WORKER_THREADS 16
 
 /**********************************************************
  * Function definitions
  **********************************************************/
 
-void buildPrefixTree(PrefixTree* tree, const vector<string>& lines, const int actual_start_index);
+void buildPrefixTree(PrefixTree* tree, const vector<string>& lines, const int actual_start_index, vector<pair<string, int>>* mapping);
 
 /**********************************************************
  * Class declarations
@@ -35,11 +35,12 @@ class WorkerThread {
         WorkerThread() {
             this->p_launched = false;
             this->workerTree = new PrefixTree();
+            this->mapping = new vector<pair<string, int>>();
         }
 
         void launch(const vector<string>& lines, const int actual_start_index) {
             this->p_launched = true;
-            this->p_thread = thread(buildPrefixTree, this->workerTree, lines, actual_start_index);
+            this->p_thread = thread(buildPrefixTree, this->workerTree, lines, actual_start_index, this->mapping);
         }
 
         void join() {
@@ -58,8 +59,13 @@ class WorkerThread {
             return this->workerTree;
         }
 
+        vector<pair<string, int>>* getMapping() {
+            return this->mapping;
+        }
+
     private:
         bool p_launched;
+        vector<pair<string, int>>* mapping;
         thread p_thread;
         PrefixTree* workerTree;
 };
@@ -176,12 +182,26 @@ vector<vector<string>> vectorizeFile(const string& filename) {
     
     // Read in file line by line
     vector<string> all_lines;
-    string line;
-    while (getline(file, line)) {
+    //string line;
+
+    const int MAX_LENGTH = 524288;
+    char* line = new char[MAX_LENGTH];
+    int i = 0;
+    while (file.getline(line, MAX_LENGTH) && strlen(line) > 0) {
         // Convert to lowercase
-        transform(line.begin(), line.end(), line.begin(), ::tolower);
+        transform(line, line + strlen(line), line, ::tolower);
         all_lines.push_back(line);
+        if (i % 10000000 == 0) {
+            cout << "Read in " << i / 10000000 << " million lines" << endl;
+        }
+        i++;
     }
+    
+    // while (getline(file, line)) {
+    //     // Convert to lowercase
+    //     transform(line.begin(), line.end(), line.begin(), ::tolower);
+    //     all_lines.push_back(line);
+    // }
 
     // Determine how many lines each thread will work with
     int chunk_size = all_lines.size() / NUM_WORKER_THREADS;
@@ -227,9 +247,10 @@ vector<vector<string>> vectorizeFile(const string& filename) {
 
 // function for threads to use to build trees
 // this function may be causing a segmentation fault when using biggertext.txt and multiple threads
-void buildPrefixTree(PrefixTree* tree, const vector<string>& lines, const int actual_start_index) {
+void buildPrefixTree(PrefixTree* tree, const vector<string>& lines, const int actual_start_index, vector<pair<string, int>>* mapping) {
     for (int i = 0; i < lines.size(); i++) {
-        tree->insert(lines[i], i + actual_start_index);
+        int encoded_mapping = tree->insert(lines[i], i + actual_start_index);
+        mapping->push_back(make_pair(lines[i], encoded_mapping));
     }
 }
 
@@ -241,19 +262,27 @@ int main(int argc, char* argv[]) {
     // Parse command line arguments
     unordered_map<string, string> args = parseArgs(argc, argv);
 
+    // Read entire file into memory. Number of vectors == number of threads
+    cout << "Reading file into memory..." << endl;
+    vector< vector<string> > lines = vectorizeFile(args["filename"]);
+    cout << "Done reading file into memory" << endl;
+    cout << endl;
+
     // List of trees for each thread
     vector<PrefixTree*> trees;
 
-    if (args["mode"] == "optimized") {
-        // Read in file into memory. Number of vectors == number of threads
-        vector< vector<string> > lines = vectorizeFile(args["filename"]);
+    // List of mappings for each thread
+    vector<vector<pair<string, int>>*> mappings;
 
+    if (args["mode"] == "optimized") {
+        cout << "Building prefix trees..." << endl;
         // Array of WorkerThread objects
         WorkerThread* worker_threads[NUM_WORKER_THREADS];
         for (int i = 0; i < NUM_WORKER_THREADS; i++) {
             worker_threads[i] = new WorkerThread();
         }
 
+        int lines_processed = 0;
         // Encode the file using the worker threads
         for (int i = 0; i < NUM_WORKER_THREADS; i++) {
             // Verify that the thread is not already running
@@ -266,6 +295,11 @@ int main(int argc, char* argv[]) {
 
                 // Launch thread to encode the file
                 worker_threads[i]->launch(lines[i], num_lines);
+                lines_processed += lines[i].size();
+                if (lines_processed % 10000000 == 0) {
+                    cout << "Processed " << lines_processed / 10000000 << " million lines" << endl;
+                }
+                
             } else {
                 cout << "Error launching thread" << endl;
                 exit(1);
@@ -283,10 +317,12 @@ int main(int argc, char* argv[]) {
                     // Add the tree from the thread to the list of trees
                     worker_threads[i]->join();
                     trees.push_back(worker_threads[i]->getTree());
+                    mappings.push_back(worker_threads[i]->getMapping());
                 }
             }
         }
-
+        cout << "Done building prefix trees" << endl;
+        cout << endl;
     }
 
     // Combine the resulting PrefixTrees from each thread
@@ -294,6 +330,42 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < trees.size(); i++) {
         tree.merge(trees[i]);
     }
+
+    // Combine the resulting mappings from each thread into one C style array of ints
+    int mapping_size = 0;
+    for (int i = 0; i < mappings.size(); i++) {
+        mapping_size += mappings[i]->size();
+    }
+
+    int remainder = mapping_size % 8;
+    // Make mapping_size a multiple of 8
+    if (mapping_size % 8 != 0) {
+        mapping_size += 8 - remainder;
+    }
+
+    int* mapping = new int[mapping_size];
+    for (int i = 0; i < mappings.size(); i++) {
+        for (int j = 0; j < mappings[i]->size(); j++) {
+            mapping[i * mappings[i]->size() + j] = mappings[i]->at(j).second;
+        }
+    }
+
+    // Pad the end with 0s
+    for (int i = mapping_size - remainder; i < mapping_size; i++) {
+        mapping[i] = 0;
+    }
+
+    // vector<pair<string, int>> mapping;
+    // for (int i = 0; i < mappings.size(); i++) {
+    //     for (int j = 0; j < mappings[i]->size(); j++) {
+    //         mapping.push_back(mappings[i]->at(j));
+    //     }
+    // }
+
+    // Print the mapping
+    // for (int i = 0; i < mapping.size(); i++) {
+    //     cout << mapping[i].first << " " << mapping[i].second << endl;
+    // }
 
     // USER INTERFACE
     cout << "User Search:" << endl << endl;
@@ -327,7 +399,7 @@ int main(int argc, char* argv[]) {
 
             // check for search mode - optimized or vanilla
             if (args["mode"] == "optimized") {
-                searchWord_indices = tree.search(search_word);
+                searchWord_indices = tree.searchMappingSIMD(mapping, mapping_size, search_word);
             } else if (args["mode"] == "vanilla") {
                 searchWord_indices = vanillaSearchWord(args["filename"], search_word);
             }
@@ -357,7 +429,7 @@ int main(int argc, char* argv[]) {
 
             // check for search mode - optimized or vanilla
             if (args["mode"] == "optimized") {
-                searchPrefix_indices = tree.searchPrefix(search_prefix);
+                searchPrefix_indices = tree.searchPrefixMappingSIMD(mapping, mapping_size, search_prefix);
             } else if (args["mode"] == "vanilla") {
                 searchPrefix_indices = vanillaSearchPrefix(args["filename"], search_prefix);
             }
