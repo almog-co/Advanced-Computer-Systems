@@ -213,6 +213,7 @@ public:
     // Designed to make use of SIMD instructions
     vector<pair<string, vector<int>>> searchPrefixMappingSIMD(int* mapping, int mapping_size, const string& prefix) {
         vector<pair<string, vector<int>>> results;
+        unordered_map<string, vector<int>> results_map;
 
         // Convert prefix to base 10
         int base10 = base26ToBase10(prefix);
@@ -229,21 +230,26 @@ public:
         // Search if base 10 number is in mapping
         for (int j = 0; j < words.size(); j++) {
             for (int i = 0; i < mapping_size; i += 8) {
+                if (i >= mapping_size) break;
                 __m256i input_reg = _mm256_set1_epi32(base10_words[j]);
                 __m256i data_reg = _mm256_loadu_si256((__m256i*) (mapping + i));
                 __m256i cmp_reg = _mm256_cmpeq_epi32(input_reg, data_reg);
                 int mask = _mm256_movemask_ps((__m256) cmp_reg);
                 if (mask != 0) {
-                    for (int j = 0; j < 8; j++) {
-                        if (mask & (1 << j)) {
-                            results.push_back(make_pair(words[j], vector<int>{i + j}));
+                    for (int k = 0; k < 8; k++) {
+                        if (mask & (1 << k)) {
+                            results_map[words[j]].push_back(i + k);
                         }
                     }
                 }
             }
+            cout << endl;
         }
 
-       
+        // Convert results_map to results format
+        for (auto it = results_map.begin(); it != results_map.end(); it++) {
+            results.push_back(make_pair(it->first, it->second));
+        }
 
         delete[] base10_words;
         return results;
