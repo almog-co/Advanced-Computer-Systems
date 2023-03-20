@@ -243,7 +243,6 @@ public:
                     }
                 }
             }
-            cout << endl;
         }
 
         // Convert results_map to results format

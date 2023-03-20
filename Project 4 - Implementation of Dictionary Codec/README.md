@@ -45,8 +45,63 @@ g++ main.cpp -std=c++11 -mavx2 && ./a.out <INPUT_FILE.txt> -mode vanilla
 ```
 
 ## Experimental Results
+The vanilla mode does not make use of SIMD instructions for searching prefixes. All tests were performed on the given `Column.txt` file of 1 GB in size. Prefixes of length 2 or less were not tested due to time constraints with prefix tree.
 
+### Raw Data
+**Time to Create Dictionary Encoding (Prefix Tree) vs. Threads**
+| Num of Threads | Time (Sec) |
+| :------------: | :--------: |
+|       1        |    186     |
+|       4        |     70     |
+|       8        |     59     |
+|      16        |    100     |
 
+**Single Random Word Search (average of 100 runs)**
+|  Type   | Time (Sec) |
+| :-----: | :--------: |
+|  SIMD   |  0.181973  |
+| Vanilla |  6.25159   |
+
+**Time to Prefix Search vs. Prefix Length (average of 100 runs)**
+| Prefix Length | SIMD Time (Sec) | Vanilla Time (Sec) |
+| :-----------: | :------------: | :---------------: |
+|       3       |     8.04678    |      14.1152      |
+|       4       |    0.356513    |      14.8271      |
+|       5       |   0.0156622    |      14.1725      |
+|       6       |  0.00000268    |      13.0844      |
+|       8       |  0.000002916   |      12.3888      |
+|      12       | 0.00000219756  |      10.3623      |
+
+### Compiled Data
+
+![Time to Create Dictionary Encoding](results/EncodingTest.png)
+
+**Single Random Word Search (average of 100 runs)**
+|  Type   | Time (Sec) |
+| :-----: | :--------: |
+|  SIMD   |  0.181973  |
+| Vanilla |  6.25159   |
+
+![Time to Prefix Search](results/PrefixTest.png)
+
+### Hardware Environment
+
+| Property | Value |
+| -------- | ----- |
+| CPU Model | Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz |
+| # Cores | 8 Cores |
+| # Threads | 16 Threads |
+| Max Turbo Frequency | 4.80 GHz |
+| Base Frequency | 2.30 GHz |
+| Cache L1 | 64K (per core)
+| Cache L2 | 256K (per core)
+| Cache L3 | 16MB (shared)
+| RAM | 32GB DDR4 2666 MHz |
 
 ## Analysis and Conclusion
 
+As seen in the first graph, the time taken to encode the dictionary increases with an increase in the number of threads. However, there comes a point where increasing the number of working threads yields diminishing results. This can be attributed to the fact that beyond a certain number of cores, the performance worsens due to the context switching required between threads. Therefore, in our tests, we found that 4 to 8 threads were ideal.
+
+Using SIMD to search for a word and conduct prefix checks significantly sped up the performance compared to the vanilla search. Given that we are using a prefix tree structure, the longer the prefix, the faster the search can be conducted. In this case, after a prefix length of 4, the time to search became less than a millisecond. For vanilla, the prefix time always took around 14 seconds regardless of length. This is because the vanilla must search through every element and every character to check if there is a match. However, the vanilla does speed up a little bit at the end because as the prefix length gets larger, for most words, no checking of the characters needs to be done. Overall, adding the prefix tree with the SIMD instructions sped up the search from 14 seconds to milliseconds.
+
+Our lab experiment demonstrated that the optimal number of working threads for encoding a dictionary is between 4 to 8. Beyond this range, the increase in the number of cores results in diminishing returns due to the context switching required between threads. Furthermore, we found that using SIMD instructions with a prefix tree structure for searching significantly improved performance compared to the vanilla search. The longer the prefix length, the faster the search could be conducted, with a time of less than a millisecond achieved after a prefix length of 4. Overall, our experiment highlights the importance of optimizing the stroage data structure, using threads, and utilizing SIMD instructions to achieve faster processing times with lower storage requirements.

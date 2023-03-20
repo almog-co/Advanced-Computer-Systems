@@ -18,7 +18,7 @@ using namespace std;
  * Preprocessor variables
  **********************************************************/
 
-#define NUM_WORKER_THREADS 16
+#define NUM_WORKER_THREADS 4
 
 /**********************************************************
  * Function definitions
@@ -193,7 +193,7 @@ vector<vector<string>> vectorizeFile(const string& filename) {
         // Convert to lowercase
         transform(line, line + strlen(line), line, ::tolower);
         all_lines.push_back(line);
-        if (i % 10000000 == 0) {
+        if (i % 10000000 == 0 && i != 0) {
             cout << "Read in " << i / 10000000 << " million lines" << endl;
         }
         i++;
@@ -270,15 +270,15 @@ int main(int argc, char* argv[]) {
     // List of mappings for each thread
     vector<vector<pair<string, int>>*> mappings;
 
+    auto startPrefixTree = chrono::high_resolution_clock::now();
     if (args["mode"] == "optimized") {
-        cout << "Building prefix trees..." << endl;
+        cout << "Building prefix trees with " << NUM_WORKER_THREADS << " threads..." << endl;
         // Array of WorkerThread objects
         WorkerThread* worker_threads[NUM_WORKER_THREADS];
         for (int i = 0; i < NUM_WORKER_THREADS; i++) {
             worker_threads[i] = new WorkerThread();
         }
 
-        int lines_processed = 0;
         // Encode the file using the worker threads
         for (int i = 0; i < NUM_WORKER_THREADS; i++) {
             // Verify that the thread is not already running
@@ -291,11 +291,6 @@ int main(int argc, char* argv[]) {
 
                 // Launch thread to encode the file
                 worker_threads[i]->launch(lines[i], num_lines);
-                lines_processed += lines[i].size();
-                if (lines_processed % 10000000 == 0) {
-                    cout << "Processed " << lines_processed / 10000000 << " million lines" << endl;
-                }
-                
             } else {
                 cout << "Error launching thread" << endl;
                 exit(1);
@@ -317,8 +312,6 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
-        cout << "Done building prefix trees" << endl;
-        cout << endl;
     }
 
     // Combine the resulting PrefixTrees from each thread
@@ -326,6 +319,14 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < trees.size(); i++) {
         tree.merge(trees[i]);
     }
+
+    if (args["mode"] == "optimized") {
+        auto endPrefixTree = chrono::high_resolution_clock::now();
+        cout << "Done building prefix trees" << endl;
+        cout << "Time to build prefix trees: " << chrono::duration_cast<chrono::seconds>(endPrefixTree - startPrefixTree).count() << " seconds" << endl;
+        cout << endl;
+    }
+
 
     // Combine the resulting mappings from each thread into one C style array of ints
     int mapping_size = 0;
