@@ -163,6 +163,20 @@ public:
         }
         return -1;
     }
+
+    void setIntColumn(int id, const string& columnName, int value) {
+        int index = getColumnIndex(columnName);
+        if (index == -1) return;
+
+        if (schema.columnTypes[index] != DATABASE_TYPE_INT) {
+            exit(1);
+            return;
+        }
+
+        void* column = getColumn(id, columnName);
+
+        *(int*)(column) = value;
+    }
     
 
 private:

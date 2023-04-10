@@ -26,6 +26,7 @@ int main() {
     cout << endl;
 
     string name = table.getStringColumn(5, "Name");
+    table.setIntColumn(5, "Balance", 5000);
     int balance = table.getIntColumn(5, "Balance");
     cout << "Row 5 - ";
     cout << "Name: " << name << ", ";
