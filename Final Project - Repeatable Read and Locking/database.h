@@ -81,7 +81,6 @@ public:
         }
 
         usedSpace++;
-
         va_end(args);
     }
 
@@ -112,6 +111,59 @@ public:
             cout << endl;
         }
     }
+
+    // Function to return entire row of given index
+    // Example: getRow(0) returns [Name1, Balance1]
+    void* getColumn(int id, const string& columnName) {
+        int index = getColumnIndex(columnName);
+        if (index == -1) return nullptr;
+
+        if (schema.columnTypes[index] == DATABASE_TYPE_INT) {
+            return &(((int*)(data[index]))[id]);
+        } else if (schema.columnTypes[index] == DATABASE_TYPE_STRING) {
+            return &(((string*)(data[index]))[id]);
+        }
+
+        return nullptr;
+    }
+
+    string getStringColumn(int id, const string& columnName) {
+        int index = getColumnIndex(columnName);
+        if (index == -1) return "";
+
+        if (schema.columnTypes[index] != DATABASE_TYPE_STRING) {
+            exit(1);
+            return "";
+        }
+
+        void* column = getColumn(id, columnName);
+
+        return *(string*)(column);
+    }
+
+    int getIntColumn(int id, const string& columnName) {
+        int index = getColumnIndex(columnName);
+        if (index == -1) return -1;
+
+        if (schema.columnTypes[index] != DATABASE_TYPE_INT) {
+            exit(1);
+            return -1;
+        }
+
+        void* column = getColumn(id, columnName);
+
+        return *(int*)(column);
+    }
+
+    int getColumnIndex(const string& columnName) {
+        for (int i = 0; i < schema.columnCount; i++) {
+            if (schema.columnNames[i] == columnName) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
 
 private:
     // Points to an array of pointers to the data

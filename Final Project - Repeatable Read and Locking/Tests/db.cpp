@@ -23,6 +23,15 @@ int main() {
     table.insert(2, "Andy", 11000);
 
     table.print();
+    cout << endl;
+
+    string name = table.getStringColumn(5, "Name");
+    int balance = table.getIntColumn(5, "Balance");
+    cout << "Row 5 - ";
+    cout << "Name: " << name << ", ";
+    cout << "Balance: " << balance << endl;
+
+    //cout << "Balance: " << (int)row[1] << endl;
 
     return 0;
 }
