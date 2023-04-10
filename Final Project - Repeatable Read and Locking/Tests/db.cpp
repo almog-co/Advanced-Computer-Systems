@@ -1,4 +1,36 @@
 #include "../database.h"
+#include <vector>
+#include <iostream>
+#include <string>
+
+/*
+ * This file runs unit tests on the DatabaseTable class in Database.h
+ */
+
+bool insertTestValues(DatabaseTable& table) {
+    vector<string> names{"Bob", "John", "Jane", "Joe", "Jill", "Jack", "Jenny", "Jen", "Jenna", "Jenifer", "Andy"};
+    vector<int> balances{1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000};
+
+    if (names.size() != balances.size()) {
+        return false;
+    }
+
+    for (int i = 0; i < names.size(); i++) {
+        table.insert(2, names[i].c_str(), balances[i]);
+    }
+
+    // Check that the values were inserted correctly
+    for (int i = 0; i < names.size(); i++) {
+        if (table.getStringColumn(i, "Name") != names[i]) {
+            return false;
+        }
+        if (table.getIntColumn(i, "Balance") != balances[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 int main() {
 
@@ -10,29 +42,13 @@ int main() {
 
     DatabaseTable table(schema);
 
-    table.insert(2, "Bob", 1000);
-    table.insert(2, "John", 2000);
-    table.insert(2, "Jane", 3000);
-    table.insert(2, "Joe", 4000);
-    table.insert(2, "Jill", 5000);
-    table.insert(2, "Jack", 6000);
-    table.insert(2, "Jenny", 7000);
-    table.insert(2, "Jen", 8000);
-    table.insert(2, "Jenna", 9000);
-    table.insert(2, "Jenifer", 10000);
-    table.insert(2, "Andy", 11000);
-
-    table.print();
-    cout << endl;
-
-    string name = table.getStringColumn(5, "Name");
-    table.setIntColumn(5, "Balance", 5000);
-    int balance = table.getIntColumn(5, "Balance");
-    cout << "Row 5 - ";
-    cout << "Name: " << name << ", ";
-    cout << "Balance: " << balance << endl;
-
-    //cout << "Balance: " << (int)row[1] << endl;
-
+    // Test insert
+    if (!insertTestValues(table)) {
+        cout << "Insert test failed" << endl;
+        return 1;
+    } else {
+        cout << "Insert test passed" << endl;
+    }
+    
     return 0;
 }
