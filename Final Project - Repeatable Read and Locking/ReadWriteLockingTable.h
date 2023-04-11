@@ -1,3 +1,6 @@
+#ifndef READWRITELOCKINGTABLE_H
+#define READWRITELOCKINGTABLE_H
+
 #include <unordered_map>
 #include <iostream>
 
@@ -109,3 +112,5 @@ class ReadWriteLockingTable {
         // track number of entries in table
         int count;
 };
+
+#endif
