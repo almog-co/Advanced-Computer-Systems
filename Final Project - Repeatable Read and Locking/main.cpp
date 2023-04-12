@@ -14,6 +14,43 @@
 
 using namespace std;
 
+#define NUM_WORKER_THREADS 1
+
+/**********************************************************
+ * Class declarations
+ **********************************************************/
+
+class WorkerThread {
+    public:
+        WorkerThread(const string& _query) {
+            this->p_launched = false;
+            this->query = _query;
+        }
+
+        void launch(const vector<string>& lines, const int actual_start_index) {
+            this->p_launched = true;
+
+        }
+
+        void join() {
+            this->p_thread.join();
+        }
+
+        bool isCompleted() {
+            return !(this->p_launched) || this->p_thread.joinable();
+        }
+
+        bool isLaunched() {
+            return this->p_launched;
+        }
+
+
+    private:
+        bool p_launched;
+        string query;
+        thread p_thread;
+};
+
 
 int main(int argc, char* argv[]) {
     ReadWriteLockingTable rwLockMap;
