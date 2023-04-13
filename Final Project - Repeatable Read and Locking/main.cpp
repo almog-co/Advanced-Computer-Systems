@@ -28,8 +28,10 @@ class WorkerThread {
         }
 
         void launch(const vector<string>& lines, const int actual_start_index) {
+            parseQuery();
             this->p_launched = true;
-
+            // what function should be launched by each thread?
+            
         }
 
         void join() {
@@ -46,6 +48,15 @@ class WorkerThread {
 
 
     private:
+        // this function will parse the query that is associated with this thread
+        // void or should it return something?
+        // maybe it should return parameters needed
+        void parseQuery() {
+            string q = this->query;
+            // need to figure out what format queries will be in
+            // in order to parse
+        }
+
         bool p_launched;
         string query;
         thread p_thread;
