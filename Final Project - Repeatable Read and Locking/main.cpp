@@ -17,12 +17,24 @@ using namespace std;
 #define NUM_WORKER_THREADS 1
 
 /**********************************************************
+ * Struct declarations
+ **********************************************************/
+
+// can edit if needed
+struct UserQuery {
+    int sender_id;
+    int receiver_id;
+    int amount;
+};
+
+
+/**********************************************************
  * Class declarations
  **********************************************************/
 
 class WorkerThread {
     public:
-        WorkerThread(const string& _query) {
+        WorkerThread(const UserQuery& _query) {
             this->p_launched = false;
             this->query = _query;
         }
@@ -31,7 +43,7 @@ class WorkerThread {
             parseQuery();
             this->p_launched = true;
             // what function should be launched by each thread?
-            
+
         }
 
         void join() {
@@ -48,19 +60,22 @@ class WorkerThread {
 
 
     private:
-        // this function will parse the query that is associated with this thread
-        // void or should it return something?
-        // maybe it should return parameters needed
-        void parseQuery() {
-            string q = this->query;
-            // need to figure out what format queries will be in
-            // in order to parse
-        }
-
         bool p_launched;
-        string query;
+        UserQuery query;
         thread p_thread;
 };
+
+void parseQuery() {
+    // code for parsing the passed in query
+
+    // check for read/write locks
+
+    // if locked, wait for unlock
+    // how should we implement "waiting"?
+
+    // commit transaction
+    return;
+}
 
 
 int main(int argc, char* argv[]) {
