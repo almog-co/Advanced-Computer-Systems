@@ -24,12 +24,12 @@ using namespace std;
 
 class WorkerThread {
     public:
-        WorkerThread(const string& _query) {
+        WorkerThread() {
             this->p_launched = false;
-            this->query = _query;
         }
 
-        void launch() {
+        void launch(const string& _query) {
+            this->query = _query;
             this->p_launched = true;
             this->p_thread = thread(parseQuery, this->query);
         }
@@ -62,5 +62,51 @@ int main(int argc, char* argv[]) {
         cout << "12 successfully locked" << endl;
     }
 
+    ifstream file("transaction.txt");
+
+    // threading stuff
+    // Array of WorkerThread objects
+    WorkerThread* worker_threads[NUM_WORKER_THREADS];
+    for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+        worker_threads[i] = new WorkerThread();
+    }
+
+    // Read in queries using the worker threads
+    for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+        // Verify that the thread is not already running
+        if (worker_threads[i]->isLaunched() == false) {
+            string query;
+            string line;
+            while (getline(file, line)) {
+                query += line + "\n";
+                // a query is complete when the transaction is committed
+                if (line == "commit_tx") {
+                    break;
+                }
+            }
+
+            // Launch thread to encode the file
+            worker_threads[i]->launch(query);
+
+        } else {
+            cout << "Error launching thread" << endl;
+            exit(1);
+        }
+    }
+
+    // Wait for all threads to finish
+    bool all_threads_finished = false;
+    while (!all_threads_finished) {
+        all_threads_finished = true;
+        for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+            if (!worker_threads[i]->isCompleted()) {
+                all_threads_finished = false;
+            } else {
+                // Join each thread
+                worker_threads[i]->join();
+                // Should threads return anything?
+            }
+        }
+    }
     
 }
