@@ -11,21 +11,11 @@
 #include <chrono>
 #include "ReadWriteLockingTable.h"
 #include "database.h"
+#include "query.h"
 
 using namespace std;
 
 #define NUM_WORKER_THREADS 1
-
-/**********************************************************
- * Struct declarations
- **********************************************************/
-
-// can edit if needed
-struct UserQuery {
-    int sender_id;
-    int receiver_id;
-    int amount;
-};
 
 
 /**********************************************************
@@ -34,16 +24,14 @@ struct UserQuery {
 
 class WorkerThread {
     public:
-        WorkerThread(const UserQuery& _query) {
+        WorkerThread(const string& _query) {
             this->p_launched = false;
             this->query = _query;
         }
 
-        void launch(const vector<string>& lines, const int actual_start_index) {
-            parseQuery();
+        void launch() {
             this->p_launched = true;
-            // what function should be launched by each thread?
-
+            this->p_thread = thread(parseQuery, this->query);
         }
 
         void join() {
@@ -61,21 +49,10 @@ class WorkerThread {
 
     private:
         bool p_launched;
-        UserQuery query;
+        string query;
         thread p_thread;
 };
 
-void parseQuery() {
-    // code for parsing the passed in query
-
-    // check for read/write locks
-
-    // if locked, wait for unlock
-    // how should we implement "waiting"?
-
-    // commit transaction
-    return;
-}
 
 
 int main(int argc, char* argv[]) {
