@@ -46,6 +46,10 @@ class WorkerThread {
             return this->p_launched;
         }
 
+        string getQuery() {
+            return this->query;
+        }
+
 
     private:
         bool p_launched;
@@ -56,11 +60,6 @@ class WorkerThread {
 
 
 int main(int argc, char* argv[]) {
-    ReadWriteLockingTable rwLockMap;
-
-    if (rwLockMap.readLockID(12)) {
-        cout << "12 successfully locked" << endl;
-    }
 
     ifstream file("transaction.txt");
 
