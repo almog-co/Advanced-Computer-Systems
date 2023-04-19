@@ -57,7 +57,7 @@ class WorkerThread {
         thread p_thread;
 };
 
-ReadWriteLockingTable rwTable;
+//ReadWriteLockingTable rwTable;
 
 // function that tries to lock stuff
 // ^ this function calls the below function
@@ -70,7 +70,7 @@ ReadWriteLockingTable rwTable;
 
 
 // function that locks all IDs (if IDs are already locked, it keeps trying until it works)
-void tryPreLock(vector<pair<int, string>> ids) {
+void tryPreLock(vector<pair<int, string>> ids, ReadWriteLockingTable& rwTable) {
 
     bool lockingDone = false;
     int lockedIDindex = 0;
@@ -80,7 +80,8 @@ void tryPreLock(vector<pair<int, string>> ids) {
         for (int i = 0; i < ids.size(); i++) {
             if (ids[i].second == "READ") { // if reading, need to lock write
                 if (!rwTable.isReadLocked(ids[i].first)) { // if this ID is read unlocked
-                    rwTable.writeLockID(ids[i].first); // write lock the ID
+                    if (rwTable.writeLockID(ids[i].first)) cout << "WRITE LOCKED" << endl; // write lock the ID
+                    cout << "Locked read for ID " << i << endl;
                 } else { // if ID is read locked
                     allLocked = false; // indicate that all IDs need to be unlocked
                     lockedIDindex = i; // this is the index that was locked, unlock all IDs before it
@@ -89,8 +90,9 @@ void tryPreLock(vector<pair<int, string>> ids) {
             } else if (ids[i].second == "WRITE" || ids[i].second == "BOTH") {
                 // need to lock both read and write
                 if (!rwTable.isReadLocked(ids[i].first) && !rwTable.isWriteLocked(ids[i].first)) { // if this ID is both read and write unlocked
-                    rwTable.readLockID(ids[i].first); // read lock
-                    rwTable.writeLockID(ids[i].first); // write lock
+                    if (rwTable.readLockID(ids[i].first)) cout << "read locked" << endl; // read lock
+                    if (rwTable.writeLockID(ids[i].first)) cout << "write locked" << endl; // write lock
+                    cout << "Locked read and write for ID " << i << endl;
                 } else { // an ID is either read or write locked
                     allLocked = false;
                     lockedIDindex = i;
@@ -106,6 +108,7 @@ void tryPreLock(vector<pair<int, string>> ids) {
         } else {
             // unlock all of the IDs that have just been locked prior
             // only reverse locks that have just been done
+            cout << "unlocking all" << endl;
             for (int i = 0; i < lockedIDindex; i++) {
                 if (ids[i].second == "READ") {
                     rwTable.writeUnlock(ids[i].first);
@@ -125,53 +128,53 @@ void tryPreLock(vector<pair<int, string>> ids) {
 }
 
 
-int main(int argc, char* argv[]) {
+// int main(int argc, char* argv[]) {
 
-    ifstream file("transaction.txt");
+//     ifstream file("transaction.txt");
 
-    // threading stuff
-    // Array of WorkerThread objects
-    WorkerThread* worker_threads[NUM_WORKER_THREADS];
-    for (int i = 0; i < NUM_WORKER_THREADS; i++) {
-        worker_threads[i] = new WorkerThread();
-    }
+//     // threading stuff
+//     // Array of WorkerThread objects
+//     WorkerThread* worker_threads[NUM_WORKER_THREADS];
+//     for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+//         worker_threads[i] = new WorkerThread();
+//     }
 
-    // Read in queries using the worker threads
-    for (int i = 0; i < NUM_WORKER_THREADS; i++) {
-        // Verify that the thread is not already running
-        if (worker_threads[i]->isLaunched() == false) {
-            string query;
-            string line;
-            while (getline(file, line)) {
-                query += line + "\n";
-                // a query is complete when the transaction is committed
-                if (line == "commit_tx") {
-                    break;
-                }
-            }
+//     // Read in queries using the worker threads
+//     for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+//         // Verify that the thread is not already running
+//         if (worker_threads[i]->isLaunched() == false) {
+//             string query;
+//             string line;
+//             while (getline(file, line)) {
+//                 query += line + "\n";
+//                 // a query is complete when the transaction is committed
+//                 if (line == "commit_tx") {
+//                     break;
+//                 }
+//             }
 
-            // Launch thread to encode the file
-            worker_threads[i]->launch(query);
+//             // Launch thread to encode the file
+//             worker_threads[i]->launch(query);
 
-        } else {
-            cout << "Error launching thread" << endl;
-            exit(1);
-        }
-    }
+//         } else {
+//             cout << "Error launching thread" << endl;
+//             exit(1);
+//         }
+//     }
 
-    // Wait for all threads to finish
-    bool all_threads_finished = false;
-    while (!all_threads_finished) {
-        all_threads_finished = true;
-        for (int i = 0; i < NUM_WORKER_THREADS; i++) {
-            if (!worker_threads[i]->isCompleted()) {
-                all_threads_finished = false;
-            } else {
-                // Join each thread
-                worker_threads[i]->join();
-                // Should threads return anything?
-            }
-        }
-    }
+//     // Wait for all threads to finish
+//     bool all_threads_finished = false;
+//     while (!all_threads_finished) {
+//         all_threads_finished = true;
+//         for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+//             if (!worker_threads[i]->isCompleted()) {
+//                 all_threads_finished = false;
+//             } else {
+//                 // Join each thread
+//                 worker_threads[i]->join();
+//                 // Should threads return anything?
+//             }
+//         }
+//     }
     
-}
+// }

@@ -16,9 +16,10 @@ class ReadWriteLockingTable {
 
         // return whether id is read locked or not
         bool isReadLocked(int id) {
-            lock_guard<mutex> lock(m);
+            //lock_guard<mutex> lock(m);
             // if id is not in table, it is unlocked
             if (table.find(id) == table.end()) {
+                cout << id << " is not read locked" << endl;
                 return false;
             }
 
@@ -27,9 +28,10 @@ class ReadWriteLockingTable {
 
         // return whether id is write locked or not
         bool isWriteLocked(int id) {
-            lock_guard<mutex> lock(m);
+            //lock_guard<mutex> lock(m);
             // if id is not in table, it is unlocked
             if (table.find(id) == table.end()) {
+                cout << id << " is not write locked" << endl;
                 return false;
             }
 
@@ -38,7 +40,7 @@ class ReadWriteLockingTable {
 
         // returns true if successfully locked, false if already locked
         bool readLockID(int id) {
-            lock_guard<mutex> lock(m);
+            //lock_guard<mutex> lock(m);
             // if id isn't already in table, add it and lock read
             if (table.find(id) == table.end()) {
                 table[id].readLocked = true;
@@ -64,7 +66,7 @@ class ReadWriteLockingTable {
 
         // returns true if successfully locked, false if already locked
         bool writeLockID(int id) {
-            lock_guard<mutex> lock(m);
+            //lock_guard<mutex> lock(m);
             // if id isn't already in table, add it and lock write
             if (table.find(id) == table.end()) {
                 table[id].readLocked = false;
@@ -90,7 +92,7 @@ class ReadWriteLockingTable {
 
         // function to unlock read
         bool readUnlock(int id) {
-            lock_guard<mutex> lock(m);
+            //lock_guard<mutex> lock(m);
             // if id is not in table, it is unlocked
             if (table.find(id) == table.end()) {
                 return true;
@@ -103,7 +105,7 @@ class ReadWriteLockingTable {
 
         // function to unlock write
         bool writeUnlock(int id) {
-            lock_guard<mutex> lock(m);
+            //lock_guard<mutex> lock(m);
             // if id is not in table, it is unlocked
             if (table.find(id) == table.end()) {
                 return true;
