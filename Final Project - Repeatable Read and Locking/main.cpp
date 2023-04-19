@@ -57,6 +57,72 @@ class WorkerThread {
         thread p_thread;
 };
 
+ReadWriteLockingTable rwTable;
+
+// function that tries to lock stuff
+// ^ this function calls the below function
+// function that does shared memory stuff (lock stuff in parallel)
+// if can't lock everything at once, unlock them all
+// queue?
+// everyhting adds ids to queue that wants to be locked
+// worker thread that works through the queue
+// one thread that just reads through the queue and does the locking
+
+
+// function that locks all IDs (if IDs are already locked, it keeps trying until it works)
+void tryPreLock(vector<pair<int, string>> ids) {
+
+    bool lockingDone = false;
+    int lockedIDindex = 0;
+
+    while (!lockingDone) {
+        bool allLocked = true;
+        for (int i = 0; i < ids.size(); i++) {
+            if (ids[i].second == "READ") { // if reading, need to lock write
+                if (!rwTable.isReadLocked(ids[i].first)) { // if this ID is read unlocked
+                    rwTable.writeLockID(ids[i].first); // write lock the ID
+                } else { // if ID is read locked
+                    allLocked = false; // indicate that all IDs need to be unlocked
+                    lockedIDindex = i; // this is the index that was locked, unlock all IDs before it
+                    break;
+                }
+            } else if (ids[i].second == "WRITE" || ids[i].second == "BOTH") {
+                // need to lock both read and write
+                if (!rwTable.isReadLocked(ids[i].first) && !rwTable.isWriteLocked(ids[i].first)) { // if this ID is both read and write unlocked
+                    rwTable.readLockID(ids[i].first); // read lock
+                    rwTable.writeLockID(ids[i].first); // write lock
+                } else { // an ID is either read or write locked
+                    allLocked = false;
+                    lockedIDindex = i;
+                    break;
+                }
+            }
+        }
+
+        // check if everything has been locked
+        if (allLocked) {
+            lockingDone = true;
+            break; // exit while loop
+        } else {
+            // unlock all of the IDs that have just been locked prior
+            // only reverse locks that have just been done
+            for (int i = 0; i < lockedIDindex; i++) {
+                if (ids[i].second == "READ") {
+                    rwTable.writeUnlock(ids[i].first);
+                } else if (ids[i].second == "WRITE" || ids[i].second == "BOTH") {
+                    rwTable.readUnlock(ids[i].first);
+                    rwTable.writeUnlock(ids[i].first);
+                }
+            }
+            continue;
+        }
+
+        // try locking again
+        // add time delay here?
+    }
+
+
+}
 
 
 int main(int argc, char* argv[]) {
