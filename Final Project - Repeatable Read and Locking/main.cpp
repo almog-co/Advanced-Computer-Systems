@@ -26,34 +26,53 @@ class WorkerThread {
     public:
         WorkerThread() {
             this->p_launched = false;
+            this->finishedAllQueries = true;
         }
 
-        void launch(const string& _query) {
-            this->query = _query;
+        void launch(const vector<string>& _query) {
+            this->queries = _query;
             this->p_launched = true;
-            this->p_thread = thread(parseQuery, this->query);
+            this->finishedAllQueries = false;
+
+            int i = 0;
+            while (i < this->queries.size()) {
+                // check if the previous query was completed before starting the new one
+                if (this->p_thread.joinable()) {
+                    this->p_thread.join();
+                    this->p_thread = thread(parseQuery, this->queries[i]);
+                    i++;
+                }
+                // if the previous query is still being processed, loop until it is ready
+            }
+
+            this->finishedAllQueries = true; // all queries have been processed
         }
 
         void join() {
-            this->p_thread.join();
+            if (this->finishedAllQueries) { // can only join this WorkerThread after it has completed all of its queries
+                this->p_thread.join();
+            } else {
+                cout << "Thread cannot be joined because it has not completed all of its queries yet" << endl;
+            }
         }
 
         bool isCompleted() {
-            return !(this->p_launched) || this->p_thread.joinable();
+            return (!(this->p_launched) || this->p_thread.joinable()) && finishedAllQueries;
         }
 
         bool isLaunched() {
             return this->p_launched;
         }
 
-        string getQuery() {
-            return this->query;
+        vector<string> getQueries() {
+            return this->queries;
         }
 
 
     private:
+        bool finishedAllQueries;
         bool p_launched;
-        string query;
+        vector<string> queries;
         thread p_thread;
 };
 
@@ -122,59 +141,134 @@ void tryPreLock(vector<pair<int, string>> ids, ReadWriteLockingTable& rwTable) {
 
         // try locking again
         // add time delay here?
-    }
+    } // end while loop
 
 
 }
 
+vector<vector<string>> readTransactionFile(const string& filename) {
+    vector<string> transactions;
 
-// int main(int argc, char* argv[]) {
+    ifstream file(filename);
 
-//     ifstream file("transaction.txt");
+    if (!file.is_open()) {
+        cout << "Could not open file: " << filename << endl;
+        exit(1);
+    }
 
-//     // threading stuff
-//     // Array of WorkerThread objects
-//     WorkerThread* worker_threads[NUM_WORKER_THREADS];
-//     for (int i = 0; i < NUM_WORKER_THREADS; i++) {
-//         worker_threads[i] = new WorkerThread();
-//     }
-
-//     // Read in queries using the worker threads
-//     for (int i = 0; i < NUM_WORKER_THREADS; i++) {
-//         // Verify that the thread is not already running
-//         if (worker_threads[i]->isLaunched() == false) {
-//             string query;
-//             string line;
-//             while (getline(file, line)) {
-//                 query += line + "\n";
-//                 // a query is complete when the transaction is committed
-//                 if (line == "commit_tx") {
-//                     break;
-//                 }
-//             }
-
-//             // Launch thread to encode the file
-//             worker_threads[i]->launch(query);
-
-//         } else {
-//             cout << "Error launching thread" << endl;
-//             exit(1);
-//         }
-//     }
-
-//     // Wait for all threads to finish
-//     bool all_threads_finished = false;
-//     while (!all_threads_finished) {
-//         all_threads_finished = true;
-//         for (int i = 0; i < NUM_WORKER_THREADS; i++) {
-//             if (!worker_threads[i]->isCompleted()) {
-//                 all_threads_finished = false;
-//             } else {
-//                 // Join each thread
-//                 worker_threads[i]->join();
-//                 // Should threads return anything?
-//             }
-//         }
-//     }
+    const int MAX_LENGTH = 524288;
+    char* line = new char[MAX_LENGTH];
     
-// }
+    string transaction = "";
+    while(file.getline(line, MAX_LENGTH) && strlen(line) > 0) {
+        // Convert to lowercase
+        transform(line, line + strlen(line), line, ::tolower);
+
+        // if the transaction is complete, add the built string to the vector
+        if (line == "commit_tx") {
+            transaction += line;
+            transactions.push_back(transaction);
+            transaction = ""; // clear string
+            continue; // next line
+        }
+
+        // add current line to current transaction
+        transaction += line;
+        transaction += " "; // add a space
+    }
+
+    // Determine how many lines each thread will work with
+    int chunk_size = transactions.size() / NUM_WORKER_THREADS;
+
+    // If the number of lines is not evenly divisible by the number of threads, then
+    // the last thread will have to work with more lines
+    int remainder = transactions.size() % NUM_WORKER_THREADS;
+
+    // If number of threads is greater than number of lines, then
+    // the last threads will have to work with 0 lines
+    if (transactions.size() < NUM_WORKER_THREADS) {
+        chunk_size = 1;
+    }
+
+    // will hold chunks of transactions stored in a vector for each thread
+    vector< vector<string> > transactionChunks;
+
+    // Vectorize file into chunks
+    for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+        int begin = i * chunk_size;
+        int end = begin + chunk_size;
+
+        if (end > transactions.size()) { end = transactions.size(); }
+        if (begin > transactions.size()) { transactionChunks.push_back(vector<string>()); continue; }
+        if (i == NUM_WORKER_THREADS - 1) { end += remainder; }
+        
+        vector<string> chunck(transactions.begin() + begin, transactions.begin() + end);
+        transactionChunks.push_back(chunck);
+    }
+
+    // Verify that the number of lines in the file is equal to the number of lines in the vector
+    int num_lines = 0;
+    for (int i = 0; i < transactionChunks.size(); i++) {
+        num_lines += transactionChunks[i].size();
+    }
+
+    if (num_lines != transactions.size()) {
+        cout << "Error: number of lines in file does not equal number of lines in vector" << endl;
+        exit(1);
+    }
+
+    file.close();
+
+    return transactionChunks;
+}
+
+
+int main(int argc, char* argv[]) {
+
+    // Read entire file into memory. Number of vectors == number of threads
+    cout << "Reading file into memory..." << endl;
+    vector< vector<string> > txChunks = readTransactionFile("transaction.txt");
+    cout << "Done reading file into memory" << endl;
+    cout << endl;
+
+    // txChunks holds all of the transactions divided into chunks for each thread to handle
+
+    // threading stuff
+    // Array of WorkerThread objects
+    WorkerThread* worker_threads[NUM_WORKER_THREADS];
+    for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+        worker_threads[i] = new WorkerThread();
+    }
+
+    // Read in queries using the worker threads
+    for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+        // Verify that the thread is not already running
+        if (worker_threads[i]->isLaunched() == false) {
+            // pass in a chunk of queries to the thread
+            vector<string> queries = txChunks[i];
+
+            // Launch thread to process each query
+            worker_threads[i]->launch(queries);
+
+        } else {
+            cout << "Error launching thread" << endl;
+            exit(1);
+        }
+    }
+
+    // Wait for all threads to finish
+    bool all_threads_finished = false;
+    while (!all_threads_finished) {
+        all_threads_finished = true;
+        for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+            if (!worker_threads[i]->isCompleted()) {
+                all_threads_finished = false;
+            } else {
+                // Join each thread
+                worker_threads[i]->join();
+                // Should threads return anything?
+            }
+        }
+    }
+    
+}
