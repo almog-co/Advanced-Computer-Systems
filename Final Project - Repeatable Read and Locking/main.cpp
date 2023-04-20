@@ -15,9 +15,9 @@
 
 using namespace std;
 
-#define NUM_WORKER_THREADS 1
-#define MAX_ID 5
-#define NUM_TRANSACTIONS 10000
+#define NUM_WORKER_THREADS 12
+#define MAX_ID 15
+#define NUM_TRANSACTIONS 120
 
 /**********************************************************
  * Class declarations
