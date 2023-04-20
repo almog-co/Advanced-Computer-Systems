@@ -16,7 +16,8 @@
 using namespace std;
 
 #define NUM_WORKER_THREADS 1
-
+#define MAX_ID 5
+#define NUM_TRANSACTIONS 10000
 
 /**********************************************************
  * Class declarations
@@ -150,6 +151,7 @@ void tryPreLock(vector<pair<int, string>> ids, ReadWriteLockingTable& rwTable) {
 
 }
 
+// for reading input files
 vector<vector<string>> readTransactionFile(const string& filename) {
     vector<string> transactions;
 
@@ -223,12 +225,68 @@ vector<vector<string>> readTransactionFile(const string& filename) {
     return transactionChunks;
 }
 
+// for generating random test transactions
+vector< vector<string> > generateTransactions(int max_id, int num_transactions) {
+    vector<string> transactions;
+
+    for (int i = 0; i < num_transactions; i++) {
+        int random_id = rand() % max_id;
+        string tx = "begin_tx \n";
+        tx += "b = readID(" + to_string(random_id) + ", 1) \n";
+        tx += "write(" + to_string(random_id) + ", 1, 100 + b) \n";
+        tx += "commit_tx";
+        transactions.push_back(tx);
+    }
+
+    // Determine how many lines each thread will work with
+    int chunk_size = transactions.size() / NUM_WORKER_THREADS;
+
+    // If the number of lines is not evenly divisible by the number of threads, then
+    // the last thread will have to work with more lines
+    int remainder = transactions.size() % NUM_WORKER_THREADS;
+
+    // If number of threads is greater than number of lines, then
+    // the last threads will have to work with 0 lines
+    if (transactions.size() < NUM_WORKER_THREADS) {
+        chunk_size = 1;
+    }
+
+    // will hold chunks of transactions stored in a vector for each thread
+    vector< vector<string> > transactionChunks;
+
+    // Vectorize file into chunks
+    for (int i = 0; i < NUM_WORKER_THREADS; i++) {
+        int begin = i * chunk_size;
+        int end = begin + chunk_size;
+
+        if (end > transactions.size()) { end = transactions.size(); }
+        if (begin > transactions.size()) { transactionChunks.push_back(vector<string>()); continue; }
+        if (i == NUM_WORKER_THREADS - 1) { end += remainder; }
+        
+        vector<string> chunck(transactions.begin() + begin, transactions.begin() + end);
+        transactionChunks.push_back(chunck);
+    }
+
+    // Verify that the number of lines in the file is equal to the number of lines in the vector
+    int num_lines = 0;
+    for (int i = 0; i < transactionChunks.size(); i++) {
+        num_lines += transactionChunks[i].size();
+    }
+
+    if (num_lines != transactions.size()) {
+        cout << "Error: number of lines in file does not equal number of lines in vector" << endl;
+        exit(1);
+    }
+
+    return transactionChunks;
+}
+
 
 int main(int argc, char* argv[]) {
 
     // Read entire file into memory. Number of vectors == number of threads
     cout << "Reading file into memory..." << endl;
-    vector< vector<string> > txChunks = readTransactionFile("Tests/transaction.txt");
+    vector< vector<string> > txChunks = generateTransactions(MAX_ID, NUM_TRANSACTIONS);
     cout << "Done reading file into memory" << endl;
     cout << endl;
 

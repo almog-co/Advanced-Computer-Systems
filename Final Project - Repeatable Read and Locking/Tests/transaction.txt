@@ -2,7 +2,6 @@ begin_tx
 b = readId(0, 1)
 write(0, 1, 100 + b) 
 commit_tx
-begin_tx
-b = readId(0, 1)
-write(0, 1, 100 + b) 
-commit_tx
+
+
+// make this file long
