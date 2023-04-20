@@ -41,7 +41,7 @@ class WorkerThread {
                     this->p_thread.join();
                     this->p_thread = thread(parseQuery, this->queries[i]); // terminating due to uncaught exception of type std::invalid_argument: stoi: no conversion
                     i++;
-                } else {
+                } else { // first thread does not need to join
                     this->p_thread = thread(parseQuery, this->queries[i]); // terminating due to uncaught exception of type std::invalid_argument: stoi: no conversion
                     i++;
                 }
@@ -169,7 +169,6 @@ vector<vector<string>> readTransactionFile(const string& filename) {
         transform(line, line + strlen(line), line, ::tolower);
 
         // if the transaction is complete, add the built string to the vector
-        //if (line == "commit_tx") {
         if (strcmp(line, "commit_tx") == 0) {
             transaction += line;
             transactions.push_back(transaction);
@@ -237,7 +236,7 @@ int main(int argc, char* argv[]) {
     cout << endl;
 
     // txChunks holds all of the transactions divided into chunks for each thread to handle
-    cout << "transaction: " << txChunks[0][0] << endl;
+    cout << "transaction: " << txChunks[0][1] << endl;
 
     // threading stuff
     // Array of WorkerThread objects
