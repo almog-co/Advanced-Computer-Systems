@@ -39,13 +39,13 @@ class WorkerThread {
                 // check if the previous query was completed before starting the new one
                 if (i > 0) { // if it is not the first thread to be deployed, it needs to wait for previous one
                     this->p_thread.join();
-                    this->p_thread = thread(parseQuery, this->queries[i]); // terminating due to uncaught exception of type std::invalid_argument: stoi: no conversion
+                    this->p_thread = thread(parseQuery, this->queries[i]);
                     i++;
                 } else { // first thread does not need to join
-                    this->p_thread = thread(parseQuery, this->queries[i]); // terminating due to uncaught exception of type std::invalid_argument: stoi: no conversion
+                    this->p_thread = thread(parseQuery, this->queries[i]);
                     i++;
                 }
-    
+
                 // if the previous query is still being processed, loop until it is ready
             }
 
@@ -160,16 +160,13 @@ vector<vector<string>> readTransactionFile(const string& filename) {
         exit(1);
     }
 
-    const int MAX_LENGTH = 524288;
-    char* line = new char[MAX_LENGTH];
-    
+    string line;
     string transaction = "";
-    while(file.getline(line, MAX_LENGTH) && strlen(line) > 0) {
-        // Convert to lowercase
-        transform(line, line + strlen(line), line, ::tolower);
+
+    while (getline(file, line)) {
 
         // if the transaction is complete, add the built string to the vector
-        if (strcmp(line, "commit_tx") == 0) {
+        if (line == "commit_tx") {
             transaction += line;
             transactions.push_back(transaction);
             transaction = ""; // clear string
@@ -178,7 +175,7 @@ vector<vector<string>> readTransactionFile(const string& filename) {
 
         // add current line to current transaction
         transaction += line;
-        transaction += " "; // add a space
+        transaction += "\n"; // add a space
     }
 
     // Determine how many lines each thread will work with
@@ -236,7 +233,6 @@ int main(int argc, char* argv[]) {
     cout << endl;
 
     // txChunks holds all of the transactions divided into chunks for each thread to handle
-    cout << "transaction: " << txChunks[0][1] << endl;
 
     // threading stuff
     // Array of WorkerThread objects
@@ -249,7 +245,6 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < NUM_WORKER_THREADS; i++) {
         // Verify that the thread is not already running
         if (worker_threads[i]->isLaunched() == false) {
-            cout << "check in first loop" << endl;
             // pass in a chunk of queries to the thread
             vector<string> queries = txChunks[i];
 
@@ -266,19 +261,16 @@ int main(int argc, char* argv[]) {
     // Wait for all threads to finish
     bool all_threads_finished = false;
     while (!all_threads_finished) {
-        cout << "entered last loop" << endl;
         all_threads_finished = true;
         for (int i = 0; i < NUM_WORKER_THREADS; i++) {
             if (!worker_threads[i]->isCompleted()) {
                 all_threads_finished = false;
             } else {
                 // Join each thread
-                cout << "attempting to join" << endl;
                 worker_threads[i]->join();
                 // Should threads return anything?
             }
         }
     }
-    cout << "Done waiting for threads to finish" << endl;
     
 }
