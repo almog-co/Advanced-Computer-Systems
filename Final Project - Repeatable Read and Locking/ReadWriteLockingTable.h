@@ -19,7 +19,7 @@ class ReadWriteLockingTable {
             //lock_guard<mutex> lock(m);
             // if id is not in table, it is unlocked
             if (table.find(id) == table.end()) {
-                cout << id << " is not read locked" << endl;
+                //cout << id << " is not read locked" << endl;
                 return false;
             }
 
@@ -31,7 +31,7 @@ class ReadWriteLockingTable {
             //lock_guard<mutex> lock(m);
             // if id is not in table, it is unlocked
             if (table.find(id) == table.end()) {
-                cout << id << " is not write locked" << endl;
+                //cout << id << " is not write locked" << endl;
                 return false;
             }
 
@@ -40,6 +40,7 @@ class ReadWriteLockingTable {
 
         // returns true if successfully locked, false if already locked
         bool readLockID(int id) {
+            cout << "readLockID called on " << id << endl;
             //lock_guard<mutex> lock(m);
             // if id isn't already in table, add it and lock read
             if (table.find(id) == table.end()) {
@@ -66,6 +67,7 @@ class ReadWriteLockingTable {
 
         // returns true if successfully locked, false if already locked
         bool writeLockID(int id) {
+            cout << "writeLockID called on " << id << endl;
             //lock_guard<mutex> lock(m);
             // if id isn't already in table, add it and lock write
             if (table.find(id) == table.end()) {

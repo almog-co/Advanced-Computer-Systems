@@ -30,7 +30,7 @@ class WorkerThread {
             this->finishedAllQueries = true;
         }
 
-        void launch(const vector<string>& _query) {
+        void launch(const vector<string>& _query, DatabaseTable* _database, ReadWriteLockingTable* _rwTable) {
             this->queries = _query;
             this->p_launched = true;
             this->finishedAllQueries = false;
@@ -40,10 +40,10 @@ class WorkerThread {
                 // check if the previous query was completed before starting the new one
                 if (i > 0) { // if it is not the first thread to be deployed, it needs to wait for previous one
                     this->p_thread.join();
-                    this->p_thread = thread(parseQuery, this->queries[i]);
+                    this->p_thread = thread(parseQuery, this->queries[i], _database, _rwTable);
                     i++;
                 } else { // first thread does not need to join
-                    this->p_thread = thread(parseQuery, this->queries[i]);
+                    this->p_thread = thread(parseQuery, this->queries[i], _database, _rwTable);
                     i++;
                 }
 
@@ -92,64 +92,6 @@ class WorkerThread {
 // worker thread that works through the queue
 // one thread that just reads through the queue and does the locking
 
-
-// function that locks all IDs (if IDs are already locked, it keeps trying until it works)
-void tryPreLock(vector<pair<int, string>> ids, ReadWriteLockingTable& rwTable) {
-
-    bool lockingDone = false;
-    int lockedIDindex = 0;
-
-    while (!lockingDone) {
-        bool allLocked = true;
-        for (int i = 0; i < ids.size(); i++) {
-            if (ids[i].second == "READ") { // if reading, need to lock write
-                if (!rwTable.isReadLocked(ids[i].first)) { // if this ID is read unlocked
-                    if (rwTable.writeLockID(ids[i].first)) cout << "WRITE LOCKED" << endl; // write lock the ID
-                    cout << "Locked read for ID " << i << endl;
-                } else { // if ID is read locked
-                    allLocked = false; // indicate that all IDs need to be unlocked
-                    lockedIDindex = i; // this is the index that was locked, unlock all IDs before it
-                    break;
-                }
-            } else if (ids[i].second == "WRITE" || ids[i].second == "BOTH") {
-                // need to lock both read and write
-                if (!rwTable.isReadLocked(ids[i].first) && !rwTable.isWriteLocked(ids[i].first)) { // if this ID is both read and write unlocked
-                    if (rwTable.readLockID(ids[i].first)) cout << "read locked" << endl; // read lock
-                    if (rwTable.writeLockID(ids[i].first)) cout << "write locked" << endl; // write lock
-                    cout << "Locked read and write for ID " << i << endl;
-                } else { // an ID is either read or write locked
-                    allLocked = false;
-                    lockedIDindex = i;
-                    break;
-                }
-            }
-        }
-
-        // check if everything has been locked
-        if (allLocked) {
-            lockingDone = true;
-            break; // exit while loop
-        } else {
-            // unlock all of the IDs that have just been locked prior
-            // only reverse locks that have just been done
-            cout << "unlocking all" << endl;
-            for (int i = 0; i < lockedIDindex; i++) {
-                if (ids[i].second == "READ") {
-                    rwTable.writeUnlock(ids[i].first);
-                } else if (ids[i].second == "WRITE" || ids[i].second == "BOTH") {
-                    rwTable.readUnlock(ids[i].first);
-                    rwTable.writeUnlock(ids[i].first);
-                }
-            }
-            continue;
-        }
-
-        // try locking again
-        // add time delay here?
-    } // end while loop
-
-
-}
 
 // for reading input files
 vector<vector<string>> readTransactionFile(const string& filename) {
@@ -281,7 +223,6 @@ vector< vector<string> > generateTransactions(int max_id, int num_transactions) 
     return transactionChunks;
 }
 
-
 int main(int argc, char* argv[]) {
 
     // Read entire file into memory. Number of vectors == number of threads
@@ -291,6 +232,32 @@ int main(int argc, char* argv[]) {
     cout << endl;
 
     // txChunks holds all of the transactions divided into chunks for each thread to handle
+
+    // Create a database table schema
+    DatabaseTableSchema schema = {
+        .columnCount = 2,
+        .columnNames = new string[2]{"Name", "Balance"},
+        .columnTypes = new int[2]{DATABASE_TYPE_STRING, DATABASE_TYPE_INT}
+    };
+
+    // Create a database table
+    DatabaseTable* database = new DatabaseTable(schema);
+
+    // Insert random balances into the table
+    for (int i = 0; i < MAX_ID; i++) {
+        int random_balance = rand() % 1000;
+        string random_name = "";
+        for (int j = 0; j < 5; j++) {
+            random_name += (char) (rand() % 26 + 97);
+        }
+        database->insert(i, random_name.c_str(), random_balance);
+    }
+
+    // Print the table
+    database->print();
+
+    // Make the locking table
+    ReadWriteLockingTable* locking_table = new ReadWriteLockingTable();
 
     // threading stuff
     // Array of WorkerThread objects
@@ -307,7 +274,7 @@ int main(int argc, char* argv[]) {
             vector<string> queries = txChunks[i];
 
             // Launch thread to process each query
-            worker_threads[i]->launch(queries);
+            worker_threads[i]->launch(queries, database, locking_table);
             cout << "thread launched" << endl;
         } else {
             cout << "Error launching thread" << endl;
@@ -330,5 +297,7 @@ int main(int argc, char* argv[]) {
             }
         }
     }
+
+    database->print();
     
 }

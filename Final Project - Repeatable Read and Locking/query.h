@@ -29,6 +29,8 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include "database.h"
+#include "ReadWriteLockingTable.h"
 
 using namespace std;
 
@@ -53,7 +55,7 @@ typedef enum {
 } TransactionState;
 
 // Main function that parses the query and executes it
-void parseQuery(const string& query);
+void parseQuery(const string& query, DatabaseTable* table, ReadWriteLockingTable* rwTable);
 
 // Works like the split function in Python
 // Returns a list of strings that are separated by the delimiter
@@ -69,14 +71,17 @@ int contains(string& str, string sequence);
 
 // Given list of variables and expressions, evaluate the expression
 // and return the result
-int evaluateExpression(const vector<pair<string, int>>& variables, string& expression);
+int evaluateExpression(const vector<pair<string, int>>& variables, string& expression, DatabaseTable* table, ReadWriteLockingTable* rwTable, vector<int>& lockedIds);
 
-// Given a list of variables and a function call, execute the function and return the result
-int executeFunction(const vector<pair<string, int>>& variables, string& function);
+// Given function call and arguments, execute the function and return the result
+int executeFunction(const string& functionName, const vector<string>& arguments, DatabaseTable* table, ReadWriteLockingTable* rwTable, vector<int>& lockedIds);
 
-void parseQuery(const string& query) {
+void parseQuery(const string& query, DatabaseTable* database, ReadWriteLockingTable* rwTable) {
     // Vector to store variables and their values (e.g. a = 5)
     vector<pair<string, int>> variables;
+
+    // Store vector of ids that we locked
+    vector<int> lockedIds;
 
     // Split the query into lines
     string queryCopy = query;
@@ -92,6 +97,11 @@ void parseQuery(const string& query) {
             state = BEGIN_TX;
         } else if (lines[i] == "commit_tx") {
             state = COMMIT_TX;
+            // Unlock everything in lockedIds
+            for (int j = 0; j < lockedIds.size(); j++) {
+                rwTable->readUnlock(lockedIds[j]);
+                rwTable->writeUnlock(lockedIds[j]);
+            }
             break;
         } else if (lines[i] == "abort_tx") {
             state = ABORT_TX;
@@ -122,7 +132,7 @@ void parseQuery(const string& query) {
             // If the right side is an expression, evaluate it and store its contents
             else {
                 // TODO: Evaluate expression
-                value = evaluateExpression(variables, tokens[1]);
+                value = evaluateExpression(variables, tokens[1], database, rwTable, lockedIds);
             }
 
             // Check if the variable already exists
@@ -142,14 +152,14 @@ void parseQuery(const string& query) {
         }
 
         else {
-            evaluateExpression(variables, lines[i]);
+            evaluateExpression(variables, lines[i], database, rwTable, lockedIds);
         }
     }
 
     // Print the variables and their values
-    for (int i = 0; i < variables.size(); i++) {
+    /*for (int i = 0; i < variables.size(); i++) {
         cout << variables[i].first << " = " << variables[i].second << endl;
-    }
+    }*/
 }
 
 vector<string> split(string& str, char delimiter) {
@@ -177,7 +187,7 @@ int contains(string& str, string sequence) {
     return -1;
 }
 
-int evaluateExpression(const vector<pair<string, int>>& variables, string& expression) {
+int evaluateExpression(const vector<pair<string, int>>& variables, string& expression, DatabaseTable* table, ReadWriteLockingTable* rwTable, vector<int>& lockedIds) {
     expression = strip(expression);
     // Look for function calls
     int index = contains(expression, "(");
@@ -190,7 +200,7 @@ int evaluateExpression(const vector<pair<string, int>>& variables, string& expre
         vector<string> args = split(arguments, ',');
         for (int i = 0; i < args.size(); i++) {
             args[i] = strip(args[i]);
-            args[i] = to_string(evaluateExpression(variables, args[i]));
+            args[i] = to_string(evaluateExpression(variables, args[i], table, rwTable, lockedIds));
         }
 
         // Join the arguments back together
@@ -203,8 +213,8 @@ int evaluateExpression(const vector<pair<string, int>>& variables, string& expre
         }
 
         // Execute the function
-        string function = functionName + "(" + argsJoined + ")";
-        return -1; //executeFunction(variables, function);
+        // string function = functionName + "(" + argsJoined + ")";
+        return executeFunction(functionName, args, table, rwTable, lockedIds);
     }
 
     // Look for arithmetic operators 
@@ -218,8 +228,8 @@ int evaluateExpression(const vector<pair<string, int>>& variables, string& expre
             string right = expression.substr(index + 1);
 
             // Evaluate the left and right sides
-            int leftValue = evaluateExpression(variables, left);
-            int rightValue = evaluateExpression(variables, right);
+            int leftValue = evaluateExpression(variables, left, table, rwTable, lockedIds);
+            int rightValue = evaluateExpression(variables, right, table, rwTable, lockedIds);
 
             // Perform the operation
             switch (operations[i][0]) {
@@ -245,8 +255,8 @@ int evaluateExpression(const vector<pair<string, int>>& variables, string& expre
             string right = expression.substr(index + 2);
 
             // Evaluate the left and right sides
-            int leftValue = evaluateExpression(variables, left);
-            int rightValue = evaluateExpression(variables, right);
+            int leftValue = evaluateExpression(variables, left, table, rwTable, lockedIds);
+            int rightValue = evaluateExpression(variables, right, table, rwTable, lockedIds);
 
             // Perform the comparison
             switch (comparisons[i][0]) {
@@ -277,7 +287,115 @@ int evaluateExpression(const vector<pair<string, int>>& variables, string& expre
 
     // If the expression is a number, return it
     return stoi(expression);
+}
 
+// function that locks all IDs (if IDs are already locked, it keeps trying until it works)
+void tryPreLock(vector<pair<int, string>> ids, ReadWriteLockingTable* rwTable) {
+
+    bool lockingDone = false;
+    int lockedIDindex = 0;
+
+    while (!lockingDone) {
+        bool allLocked = true;
+        for (int i = 0; i < ids.size(); i++) {
+            if (ids[i].second == "READ") { // if reading, need to lock write
+                if (!rwTable->isReadLocked(ids[i].first)) { // if this ID is read unlocked
+                    
+                    if (rwTable->writeLockID(ids[i].first)) {
+                        //cout << "WRITE LOCKED" << endl;
+                    }
+
+                    //cout << "Locked read for ID " << i << endl;
+                } else { // if ID is read locked
+                    allLocked = false; // indicate that all IDs need to be unlocked
+                    lockedIDindex = i; // this is the index that was locked, unlock all IDs before it
+                    break;
+                }
+            } else if (ids[i].second == "WRITE" || ids[i].second == "BOTH") {
+                // need to lock both read and write
+                if (!rwTable->isReadLocked(ids[i].first) && !rwTable->isWriteLocked(ids[i].first)) { 
+                    if (rwTable->readLockID(ids[i].first)) {
+                        //cout << "read locked" << endl;
+                    }
+                    if (rwTable->writeLockID(ids[i].first)) {
+                        //cout << "write locked" << endl;
+                    }
+                    //cout << "Locked read and write for ID " << i << endl;
+                } else { // an ID is either read or write locked
+                    allLocked = false;
+                    lockedIDindex = i;
+                    break;
+                }
+            }
+        }
+
+        // check if everything has been locked
+        if (allLocked) {
+            lockingDone = true;
+            break; // exit while loop
+        } else {
+            // unlock all of the IDs that have just been locked prior
+            // only reverse locks that have just been done
+            //cout << "unlocking all" << endl;
+            for (int i = 0; i < lockedIDindex; i++) {
+                if (ids[i].second == "READ") {
+                    rwTable->writeUnlock(ids[i].first);
+                } else if (ids[i].second == "WRITE" || ids[i].second == "BOTH") {
+                    rwTable->readUnlock(ids[i].first);
+                    rwTable->writeUnlock(ids[i].first);
+                }
+            }
+            continue;
+        }
+
+        // try locking again
+        // add time delay here?
+    } // end while loop
+
+
+}
+
+
+int executeFunction(const string& functionName, const vector<string>& arguments, DatabaseTable* table, ReadWriteLockingTable* rwTable, vector<int>& lockedIds) {
+    // Read ID
+    if (functionName == "readID") {
+        // First argument is the ID
+        int id = stoi(arguments[0]);
+
+        // Second argument is the column
+        int column = stoi(arguments[1]);
+
+        string columnName = "Balance";
+
+        // Lock the ID as (id, "BOTH")
+        vector<pair<int, string>> ids;
+        ids.push_back(make_pair(id, "BOTH"));
+        tryPreLock(ids, rwTable);
+
+        // Add the ID to the locked IDs
+        lockedIds.push_back(id);
+
+        return table->getIntColumn(id, columnName);
+    }
+
+    // Write to ID
+    else if (functionName == "write") {
+        // First argument is the ID
+        int id = stoi(arguments[0]);
+
+        // Second argument is the column
+        int column = stoi(arguments[1]);
+
+        // Third argument is the value
+        int value = stoi(arguments[2]);
+
+        string columnName = "Balance";
+
+        table->setIntColumn(id, columnName, value);
+        return 0;
+    }
+
+    return -1;
 }
 
 #endif
