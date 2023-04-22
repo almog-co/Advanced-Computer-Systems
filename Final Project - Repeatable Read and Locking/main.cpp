@@ -15,13 +15,19 @@
 
 using namespace std;
 
-#define NUM_WORKER_THREADS 12
+#define NUM_WORKER_THREADS 10
 #define MAX_ID 15
-#define NUM_TRANSACTIONS 120
+#define NUM_TRANSACTIONS 100000
 
 /**********************************************************
  * Class declarations
  **********************************************************/
+
+void parseQueries(const vector<string>& _queries, DatabaseTable* _database, ReadWriteLockingTable* _rwTable) {
+    for (int i = 0; i < _queries.size(); i++) {
+        parseQuery(_queries[i], _database, _rwTable);
+    }
+}
 
 class WorkerThread {
     public:
@@ -35,20 +41,7 @@ class WorkerThread {
             this->p_launched = true;
             this->finishedAllQueries = false;
 
-            int i = 0;
-            while (i < this->queries.size()) {
-                // check if the previous query was completed before starting the new one
-                if (i > 0) { // if it is not the first thread to be deployed, it needs to wait for previous one
-                    this->p_thread.join();
-                    this->p_thread = thread(parseQuery, this->queries[i], _database, _rwTable);
-                    i++;
-                } else { // first thread does not need to join
-                    this->p_thread = thread(parseQuery, this->queries[i], _database, _rwTable);
-                    i++;
-                }
-
-                // if the previous query is still being processed, loop until it is ready
-            }
+            this->p_thread = thread(parseQueries, this->queries, _database, _rwTable);
 
             this->finishedAllQueries = true; // all queries have been processed
         }
@@ -266,6 +259,9 @@ int main(int argc, char* argv[]) {
         worker_threads[i] = new WorkerThread();
     }
 
+    // Start the timer
+    auto start = chrono::high_resolution_clock::now();
+
     // Read in queries using the worker threads
     for (int i = 0; i < NUM_WORKER_THREADS; i++) {
         // Verify that the thread is not already running
@@ -298,6 +294,14 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Stop the timer
+    auto stop = chrono::high_resolution_clock::now();
+
     database->print();
+
+    // Print the time results
+    auto duration = chrono::duration_cast<chrono::milliseconds>(stop - start);
+
+    cout << "Time to run " << NUM_TRANSACTIONS << " transactions: " << duration.count() << " milliseconds" << endl;
     
 }
