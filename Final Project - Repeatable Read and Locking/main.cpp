@@ -15,9 +15,15 @@
 
 using namespace std;
 
-#define NUM_WORKER_THREADS 10
-#define MAX_ID 15
+#define NUM_WORKER_THREADS 32
+#define MAX_ID 100000
 #define NUM_TRANSACTIONS 100000
+
+int getMyRandomNumber()
+{
+    static int MY_RANGE_MAX = 2147483647;
+    return (1.0*rand()/RAND_MAX)*MY_RANGE_MAX;
+}
 
 /**********************************************************
  * Class declarations
@@ -165,7 +171,7 @@ vector< vector<string> > generateTransactions(int max_id, int num_transactions) 
     vector<string> transactions;
 
     for (int i = 0; i < num_transactions; i++) {
-        int random_id = rand() % max_id;
+        int random_id = getMyRandomNumber() % max_id;
         string tx = "begin_tx \n";
         tx += "b = readID(" + to_string(random_id) + ", 1) \n";
         tx += "write(" + to_string(random_id) + ", 1, 100 + b) \n";
@@ -247,10 +253,10 @@ int main(int argc, char* argv[]) {
     }
 
     // Print the table
-    database->print();
+    // database->print();
 
     // Make the locking table
-    ReadWriteLockingTable* locking_table = new ReadWriteLockingTable();
+    ReadWriteLockingTable* locking_table = new ReadWriteLockingTable(MAX_ID);
 
     // threading stuff
     // Array of WorkerThread objects
@@ -297,7 +303,7 @@ int main(int argc, char* argv[]) {
     // Stop the timer
     auto stop = chrono::high_resolution_clock::now();
 
-    database->print();
+    // database->print();
 
     // Print the time results
     auto duration = chrono::duration_cast<chrono::milliseconds>(stop - start);

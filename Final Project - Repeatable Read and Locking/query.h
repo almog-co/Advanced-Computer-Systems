@@ -99,8 +99,7 @@ void parseQuery(const string& query, DatabaseTable* database, ReadWriteLockingTa
             state = COMMIT_TX;
             // Unlock everything in lockedIds
             for (int j = 0; j < lockedIds.size(); j++) {
-                rwTable->readUnlock(lockedIds[j]);
-                rwTable->writeUnlock(lockedIds[j]);
+                rwTable->bothUnlock(lockedIds[j]);
             }
             break;
         } else if (lines[i] == "abort_tx") {
@@ -295,61 +294,14 @@ void tryPreLock(vector<pair<int, string>> ids, ReadWriteLockingTable* rwTable) {
     bool lockingDone = false;
     int lockedIDindex = 0;
 
-    while (!lockingDone) {
-        bool allLocked = true;
-        for (int i = 0; i < ids.size(); i++) {
-            if (ids[i].second == "READ") { // if reading, need to lock write
-                if (!rwTable->isReadLocked(ids[i].first)) { // if this ID is read unlocked
-                    
-                    if (rwTable->writeLockID(ids[i].first)) {
-                        //cout << "WRITE LOCKED" << endl;
-                    }
-
-                    //cout << "Locked read for ID " << i << endl;
-                } else { // if ID is read locked
-                    allLocked = false; // indicate that all IDs need to be unlocked
-                    lockedIDindex = i; // this is the index that was locked, unlock all IDs before it
-                    break;
-                }
-            } else if (ids[i].second == "WRITE" || ids[i].second == "BOTH") {
-                // need to lock both read and write
-                if (!rwTable->isReadLocked(ids[i].first) && !rwTable->isWriteLocked(ids[i].first)) { 
-                    if (rwTable->readLockID(ids[i].first)) {
-                        //cout << "read locked" << endl;
-                    }
-                    if (rwTable->writeLockID(ids[i].first)) {
-                        //cout << "write locked" << endl;
-                    }
-                    //cout << "Locked read and write for ID " << i << endl;
-                } else { // an ID is either read or write locked
-                    allLocked = false;
-                    lockedIDindex = i;
-                    break;
-                }
-            }
-        }
-
-        // check if everything has been locked
-        if (allLocked) {
-            lockingDone = true;
-            break; // exit while loop
-        } else {
-            // unlock all of the IDs that have just been locked prior
-            // only reverse locks that have just been done
-            //cout << "unlocking all" << endl;
-            for (int i = 0; i < lockedIDindex; i++) {
-                if (ids[i].second == "READ") {
-                    rwTable->writeUnlock(ids[i].first);
-                } else if (ids[i].second == "WRITE" || ids[i].second == "BOTH") {
-                    rwTable->readUnlock(ids[i].first);
-                    rwTable->writeUnlock(ids[i].first);
-                }
-            }
-            continue;
+    while (true) {
+        if (rwTable->bothLock(ids[0].first)) {
+            break;
         }
 
         // try locking again
         // add time delay here?
+        
     } // end while loop
 
 

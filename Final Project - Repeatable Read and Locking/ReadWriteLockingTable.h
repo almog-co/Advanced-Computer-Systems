@@ -7,11 +7,24 @@
 
 using namespace std;
 
+struct LockInfo {
+    bool readLocked = false;
+    bool writeLocked = false;
+};
+
 // Class declaration for read/write locking data structure
 class ReadWriteLockingTable {
     public:
-        ReadWriteLockingTable() {
+        ReadWriteLockingTable(int size = 1000) {
             this->count = 0;
+            this->table = unordered_map<int, LockInfo>(size);
+
+            for (int i = 0; i < size; i++) {
+                LockInfo info;
+                info.readLocked = false;
+                info.writeLocked = false;
+                table[i] = info;
+            }
         }
 
         // return whether id is read locked or not
@@ -118,13 +131,26 @@ class ReadWriteLockingTable {
             return true;
         }
 
+        bool bothLock(int id) {
+            if (table[id].readLocked == true) {
+                return false;
+            }
+            
+            table[id].readLocked = true;
+            return true;
+        }
+
+        bool bothUnlock(int id) {
+            // Set both locks to false
+            table[id].readLocked = false;
+            table[id].writeLocked = false;
+
+            return true;
+        }
+
 
     private:
         // track locking info
-        struct LockInfo {
-            bool readLocked = false;
-            bool writeLocked = false;
-        };
 
         // shared mutex allows for multiple readers to read simultaneously, but only one writer at a time
         // shared_mutex not supported on my machine, so using standard mutex instead
