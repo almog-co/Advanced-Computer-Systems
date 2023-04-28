@@ -28,7 +28,8 @@ The parseQuery function is the main function that parses the query and executes 
 
 
 ## Prerequisites
-
+1. immintrin library
+2. g++ compiler with C++ version 11
 
 ## Usage
 ### Multi Threading
