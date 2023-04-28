@@ -37,10 +37,69 @@ The number of threads used to run the program can be changed by editing the line
 #define NUM_WORKER_THREADS <number of threads>
 ```
 
+### Number of Rows
+The number of rows that is generated in the database can be changed bt editing this line in main.cpp:
+```
+#define MAX_ID 100000
+```
 
-## Experimental Results
+### Compile/Run
+To compile and run the program, use the following command.
+```
+g++ main.cpp -mavx2 -std=c++11 && ./a.out
+```
+
+## Results
+To see the results, please use the `performance-results` branch as it is optimized to colelct the data.
+
+The results were run on 100,000 transactions reading/writing to one element.
+### Raw Results
+
+| Threads | Number of DB rows | Time in ms |
+|------------------:|-------------------------:|-----------:|
+|                 1 |                       10 |       2621 |
+|                 1 |                      100 |       2715 |
+|                 1 |                     1000 |       2754 |
+|                 1 |                    10000 |       2781 |
+|                 2 |                       10 |       1467 |
+|                 2 |                      100 |       1402 |
+|                 2 |                     1000 |       1378 |
+|                 2 |                    10000 |       1316 |
+|                 4 |                       10 |        787 |
+|                 4 |                      100 |        740 |
+|                 4 |                     1000 |        754 |
+|                 4 |                    10000 |        745 |
+|                 8 |                       10 |        510 |
+|                 8 |                      100 |        506 |
+|                 8 |                     1000 |        424 |
+|                 8 |                    10000 |        418 |
+|                16 |                       10 |       1581 |
+|                16 |                      100 |        871 |
+|                16 |                     1000 |        492 |
+|                16 |                    10000 |        422 |
+|                32 |                       10 |       3102 |
+|                32 |                      100 |       1300 |
+|                32 |                     1000 |        615 |
+|                32 |                    10000 |        455 |
 
 
+### Compiled Results
+
+![Results](results.png)
+
+### Hardware Environment
+
+| Property | Value |
+| -------- | ----- |
+| CPU Model | Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz |
+| # Cores | 8 Cores |
+| # Threads | 16 Threads |
+| Max Turbo Frequency | 4.80 GHz |
+| Base Frequency | 2.30 GHz |
+| Cache L1 | 64K (per core)
+| Cache L2 | 256K (per core)
+| Cache L3 | 16MB (shared)
+| RAM | 32GB DDR4 2666 MHz |
 
 ## Analysis and Conclusion
-
+Looking at the data reveals that running transactions sequentially works well for low cardinality databases, as the execution times remain relatively stable across different thread counts. This can be attributed to the lower probability of collisions and contention in databases with few unique elements. On the other hand, for high cardinality databases, increasing the number of threads improves performance, as indicated by decreasing execution times. This decrease signifies a reduced likelihood of collisions and contention, resulting in faster transaction processing. However, it's important to note that there is a limit to the benefits of increasing thread count, as too many threads can introduce significant context switching overhead, which can degrade performance. In this specific scenario, the results indicate that an optimal thread count of 16 provided the best performance, striking a balance between reducing contention and minimizing context switching overhead.
